@@ -99,7 +99,7 @@ class CryptoClient: NSObject, NSStreamDelegate {
             if stream === self.ostr {
                 if (stream as! NSOutputStream).hasSpaceAvailable {
                     let publicKey = SecKeyWrapper.sharedWrapper().getPublicKeyBits()!
-                    var retLen = self.sendData(publicKey)
+                    let retLen = self.sendData(publicKey)
                     assert(retLen == publicKey.length, "Attempt to send public key failed, only sent \(retLen) bytes.")
                     
                     self.ostr!.close()
@@ -197,41 +197,40 @@ class CryptoClient: NSObject, NSStreamDelegate {
     }
     
     func verifyBlob(blob: NSData) -> Bool {
-        var error: NSError? = nil
         var verified = false
         var pad: CCOptions = 0
         
         let peerName = self.service!.name
+
+        do {
+            let message = try NSPropertyListSerialization.propertyListWithData(blob, options: NSPropertyListReadOptions(rawValue: NSPropertyListMutabilityOptions.MutableContainers.rawValue), format: nil) as! NSDictionary
         
-        let message = NSPropertyListSerialization.propertyListWithData(blob, options: NSPropertyListReadOptions(NSPropertyListMutabilityOptions.MutableContainers.rawValue), format: nil, error: &error) as! NSDictionary?
-        
-        if error == nil {
             
             // Get the unwrapped symmetric key.
-            let symmetricKey = SecKeyWrapper.sharedWrapper().unwrapSymmetricKey(message![kSymTag]! as! NSData)
+            let symmetricKey = SecKeyWrapper.sharedWrapper().unwrapSymmetricKey(message[kSymTag]! as! NSData)
             
             // Get the padding PKCS#7 flag.
-            pad = (message![kPadTag]! as! NSNumber).unsignedIntValue
+            pad = (message[kPadTag]! as! NSNumber).unsignedIntValue
             
             // Get the encrypted message and decrypt.
-            let plainText = SecKeyWrapper.sharedWrapper().doCipher(message![kMesTag]! as! NSData,
+            let plainText = SecKeyWrapper.sharedWrapper().doCipher(message[kMesTag]! as! NSData,
                 key: symmetricKey!,
                 context: CCOperation(kCCDecrypt),
                 padding: &pad)
             
             // Add peer public key.
             let publicKeyRef = SecKeyWrapper.sharedWrapper().addPeerPublicKey(peerName,
-                keyBits: message![kPubTag]! as! NSData)
+                keyBits: message[kPubTag]! as! NSData)
             
             // Verify the signature.
             verified = SecKeyWrapper.sharedWrapper().verifySignature(plainText!,
                 secKeyRef: publicKeyRef!,
-                signature: message![kSigTag]! as! NSData)
+                signature: message[kSigTag]! as! NSData)
             
             // Clean up by removing the peer public key.
             SecKeyWrapper.sharedWrapper().removePeerPublicKey(peerName)
-        } else {
-            fatalError(error!.localizedDescription)
+        } catch let error as NSError {
+            fatalError(error.localizedDescription)
         }
         
         return verified

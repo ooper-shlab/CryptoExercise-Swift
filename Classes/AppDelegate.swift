@@ -71,12 +71,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         zeroAddress.sin_len = UInt8(strideofValue(zeroAddress))
         zeroAddress.sin_family = sa_family_t(AF_INET)
         
-        var umDefaultRouteReachability = withUnsafePointer(&zeroAddress) {addrPtr in
-            return SCNetworkReachabilityCreateWithAddress(nil, UnsafePointer<sockaddr>(addrPtr))
+        guard let defaultRouteReachability = withUnsafePointer(&zeroAddress, {addrPtr in
+            SCNetworkReachabilityCreateWithAddress(nil, UnsafePointer<sockaddr>(addrPtr))
+        }) else {
+           return false
         }
-        var defaultRouteReachability = umDefaultRouteReachability?.takeRetainedValue()
         
-        var flags: SCNetworkReachabilityFlags = 0
+        var flags: SCNetworkReachabilityFlags = []
         let gotFlags = SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags)
         if gotFlags == Boolean(0) {
             return false
@@ -84,7 +85,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // kSCNetworkReachabilityFlagsReachable indicates that the specified nodename or address can
         // be reached using the current network configuration.
-        let isReachable = (Int(flags) & kSCNetworkReachabilityFlagsReachable) != 0
+        let isReachable = flags.contains(.Reachable)
         
         // This flag indicates that the specified nodename or address can
         // be reached using the current network configuration, but a
@@ -93,8 +94,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // If the flag is false, we don't have a connection. But because CFNetwork
         // automatically attempts to bring up a WWAN connection, if the WWAN reachability
         // flag is present, a connection is not required.
-        var noConnectionRequired = (Int(flags) & kSCNetworkReachabilityFlagsConnectionRequired) == 0
-        if (Int(flags) & kSCNetworkReachabilityFlagsIsWWAN) != 0 {
+        var noConnectionRequired = !flags.contains(.ConnectionRequired)
+        if flags.contains(.IsWWAN) {
             noConnectionRequired = true
         }
         
@@ -110,7 +111,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidFinishLaunching(application: UIApplication) {
         // Is WiFi network available? That's necessary to use Bonjour.
         if !self.isNetworkAvailableFlags(nil) {
-            if NSClassFromString("UIAlertController") != nil {
+            if #available(iOS 8.0, *) {
                 let alertController = UIAlertController(title: "No WiFi network available.",
                     message: "Exit this app and enable WiFi using the Settings application.",
                     preferredStyle: .Alert)

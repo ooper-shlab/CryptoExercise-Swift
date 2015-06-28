@@ -84,7 +84,7 @@ class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate 
     func netServiceDidPublish(sender: NSNetService) {
         self.netService = sender
     }
-    func netService(sender: NSNetService, didNotPublish errorDict: [NSObject : AnyObject]) {
+    func netService(sender: NSNetService, didNotPublish errorDict: [String: NSNumber]) {
         fatalError(errorDict.description)
     }
     
@@ -95,7 +95,7 @@ class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate 
         // is the main queue).  Work around this by bouncing to the main queue.
         NSOperationQueue.mainQueue().addOperationWithBlock {
             //### We cannot get client peer info here?
-            var peer: String? = "Generic Peer"
+            let peer: String? = "Generic Peer"
 //        CFSocketNativeHandle nativeSocketHandle = *(CFSocketNativeHandle *)data;
 //        struct sockaddr_in peerAddress;
 //        socklen_t peerLen = sizeof(peerAddress);

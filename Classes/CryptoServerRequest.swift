@@ -202,7 +202,7 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
         let symmetricKey = SecKeyWrapper.sharedWrapper().getSymmetricKeyBytes()
         
         // Build the plain text.
-        let plainText = NSData(bytes: kMessageBody, length: count(kMessageBody.utf8) + 1)
+        let plainText = NSData(bytes: kMessageBody, length: kMessageBody.utf8.count + 1)
         
         // Acquire handle to public key.
         let peerPublicKeyRef = SecKeyWrapper.sharedWrapper().addPeerPublicKey(peer, keyBits: peerKey)
@@ -226,7 +226,12 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
             // Add the wrapped symmetric key.
             messageHolder[kSymTag] = SecKeyWrapper.sharedWrapper().wrapSymmetricKey(symmetricKey!, keyRef: peerPublicKeyRef!)
             
-            message = NSPropertyListSerialization.dataWithPropertyList(messageHolder, format: .BinaryFormat_v1_0, options: 0, error: &error)
+            do {
+                message = try NSPropertyListSerialization.dataWithPropertyList(messageHolder, format: .BinaryFormat_v1_0, options: 0)
+            } catch let error1 as NSError {
+                error = error1
+                message = nil
+            }
             
             // All done. Time to remove the public key from the keychain.
             SecKeyWrapper.sharedWrapper().removePeerPublicKey(peer)

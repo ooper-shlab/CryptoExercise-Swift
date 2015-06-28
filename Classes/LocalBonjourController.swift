@@ -63,12 +63,12 @@ class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
     var netServiceBrowser: NSNetServiceBrowser?
     var services: [NSNetService] = []
     @IBOutlet var tableView: UITableView!
-    private lazy var _serviceController = ServiceController(nibName: "ServiceView", bundle: nil)
+    private lazy var _serviceController: ServiceController = ServiceController(nibName: "ServiceView", bundle: nil)
     var serviceController: ServiceController {
         get { return _serviceController }
         set { _serviceController = newValue }
     }
-    private lazy var _keyGenerationController = KeyGeneration(nibName: "KeyGeneration", bundle: nil)
+    private lazy var _keyGenerationController: KeyGeneration = KeyGeneration(nibName: "KeyGeneration", bundle: nil)
     var keyGenerationController: KeyGeneration {
         get { return _keyGenerationController }
         set { _keyGenerationController = newValue }
@@ -101,9 +101,9 @@ class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
     override func shouldAutorotate() -> Bool {
         return false
     }
-    override func supportedInterfaceOrientations() -> Int {
+    override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
         // Return YES for supported orientations
-        return UIInterfaceOrientation.Portrait.rawValue
+        return UIInterfaceOrientationMask.Portrait
     }
     
     // Creates an NSNetServiceBrowser that searches for services of a particular type in a particular domain.
@@ -124,7 +124,7 @@ class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
     }
     
     func netServiceBrowser(aNetServiceBrowser: NSNetServiceBrowser, didRemoveService service: NSNetService, moreComing: Bool) {
-        if let index = find(self.services, service) {self.services.removeAtIndex(index)}
+        if let index = self.services.indexOf(service) {self.services.removeAtIndex(index)}
         if !moreComing { tableView.reloadData() }
     }
     
@@ -151,7 +151,7 @@ class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
     }
     
     func tableView(tv: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        var cell = tableView.dequeueReusableCellWithIdentifier("MyCell") as! UITableViewCell?
+        var cell = tableView.dequeueReusableCellWithIdentifier("MyCell") as UITableViewCell?
         if cell == nil {
             cell = UITableViewCell(style: .Default, reuseIdentifier: "MyCell")
         }

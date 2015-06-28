@@ -106,8 +106,8 @@ class KeyGeneration: UIViewController {
     override func shouldAutorotate() -> Bool {
         return false
     }
-    override func supportedInterfaceOrientations() -> Int {
-        return UIInterfaceOrientation.Portrait.rawValue
+    override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
+        return UIInterfaceOrientationMask.Portrait
     }
 
 

@@ -108,9 +108,9 @@ class SecKeyWrapper: NSObject {
     
     private override init() {
         // Tag data to search for keys.
-        privateTag = NSData(bytes: kPrivateKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: count(kPrivateKeyTag.utf8) + 1)
-        publicTag = NSData(bytes: kPublicKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: count(kPrivateKeyTag.utf8) + 1)
-        symmetricTag = NSData(bytes: kSymmetricKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: count(kSymmetricKeyTag.utf8) + 1)
+        privateTag = NSData(bytes: kPrivateKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: kPrivateKeyTag.utf8.count + 1)
+        publicTag = NSData(bytes: kPublicKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: kPrivateKeyTag.utf8.count + 1)
+        symmetricTag = NSData(bytes: kSymmetricKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: kSymmetricKeyTag.utf8.count + 1)
         super.init()
         
     }
@@ -186,8 +186,8 @@ class SecKeyWrapper: NSObject {
         // See SecKey.h to set other flag values.
         
         // Set attributes to top level dictionary.
-        keyPairAttr[kSecPrivateKeyAttrs.takeRetainedValue() as! NSObject] = privateKeyAttr
-        keyPairAttr[kSecPublicKeyAttrs.takeRetainedValue() as! NSObject] = publicKeyAttr
+        keyPairAttr[kSecPrivateKeyAttrs] = privateKeyAttr
+        keyPairAttr[kSecPublicKeyAttrs] = publicKeyAttr
         
         // SecKeyGeneratePair returns the SecKeyRefs just for educational purposes.
         var umPublicKeyRef: Unmanaged<SecKey>? = nil
@@ -245,7 +245,7 @@ class SecKeyWrapper: NSObject {
         var persistPeer: AnyObject? = nil
         
         let peerTag = peerName.withCString {peerBytes in
-            return NSData(bytes: peerBytes, length: count(peerName.utf8))
+            return NSData(bytes: peerBytes, length: peerName.utf8.count)
         }
         var peerPublicKeyAttr: [NSObject: AnyObject] = [
             
@@ -670,13 +670,12 @@ class SecKeyWrapper: NSObject {
         
         // Get the persistent key reference.
         var umPersistentRef: Unmanaged<AnyObject>? = nil
-        let sanityCheck = SecItemCopyMatching(queryKey, &umPersistentRef)
+        let _ = SecItemCopyMatching(queryKey, &umPersistentRef)
         
         return umPersistentRef?.takeRetainedValue()
     }
     
     func getKeyRefWithPersistentKeyRef(persistentRef: AnyObject) -> SecKey? {
-        var sanityCheck = noErr
         var keyRef: SecKey? = nil
         
         
@@ -687,7 +686,7 @@ class SecKeyWrapper: NSObject {
         
         // Get the persistent key reference.
         var umKeyRef: Unmanaged<AnyObject>? = nil
-        sanityCheck = SecItemCopyMatching(queryKey, &umKeyRef)
+        let _ = SecItemCopyMatching(queryKey, &umKeyRef)
         keyRef = umKeyRef?.takeRetainedValue() as! SecKey?
         
         return keyRef
