@@ -73,8 +73,9 @@ let kChosenDigestLength = Int(CC_SHA1_DIGEST_LENGTH)
 
 // Global constants for padding schemes.
 let kPKCS1 = 11
-let kTypeOfWrapPadding = kSecPaddingPKCS1
-let kTypeOfSigPadding = kSecPaddingPKCS1SHA1
+
+let kTypeOfWrapPadding = SecPadding.PKCS1
+let kTypeOfSigPadding = SecPadding.PKCS1SHA1
 
 // constants used to find public, private, and symmetric keys.
 let kPublicKeyTag = "com.apple.sample.publickey"
@@ -190,12 +191,8 @@ class SecKeyWrapper: NSObject {
         keyPairAttr[kSecPublicKeyAttrs] = publicKeyAttr
         
         // SecKeyGeneratePair returns the SecKeyRefs just for educational purposes.
-        var umPublicKeyRef: Unmanaged<SecKey>? = nil
-        var umPrivateKeyRef: Unmanaged<SecKey>? = nil
-        sanityCheck = SecKeyGeneratePair(keyPairAttr, &umPublicKeyRef, &umPrivateKeyRef)
-        assert(sanityCheck == noErr && umPublicKeyRef != nil && umPrivateKeyRef != nil, "Something really bad went wrong with generating the key pair [\(sanityCheck)].")
-        publicKeyRef = umPublicKeyRef!.takeRetainedValue()
-        privateKeyRef = umPrivateKeyRef!.takeRetainedValue()
+        sanityCheck = SecKeyGeneratePair(keyPairAttr, &publicKeyRef, &privateKeyRef)
+        assert(sanityCheck == noErr && publicKeyRef != nil && privateKeyRef != nil, "Something really bad went wrong with generating the key pair [\(sanityCheck)].")
         
     }
     
@@ -241,7 +238,7 @@ class SecKeyWrapper: NSObject {
     
     func addPeerPublicKey(peerName: String, keyBits publicKey: NSData) -> SecKey? {
         var sanityCheck = noErr
-        var peerKeyRef: SecKey? = nil
+        var peerKeyRef: AnyObject? = nil
         var persistPeer: AnyObject? = nil
         
         let peerTag = peerName.withCString {peerBytes in
@@ -255,8 +252,7 @@ class SecKeyWrapper: NSObject {
             kSecValueData: publicKey,
             kSecReturnPersistentRef: true]
         
-        var umPersistPeer: Unmanaged<AnyObject>? = nil
-        sanityCheck = SecItemAdd(peerPublicKeyAttr, &umPersistPeer)
+        sanityCheck = SecItemAdd(peerPublicKeyAttr as CFDictionary, &persistPeer)
         
         // The nice thing about persistent references is that you can write their value out to disk and
         // then use them later. I don't do that here but it certainly can make sense for other situations
@@ -266,7 +262,6 @@ class SecKeyWrapper: NSObject {
         // & (SecKeyRef)getKeyRefWithPersistentKeyRef:(CFTypeRef)persistentRef.
         
         assert(sanityCheck == noErr || sanityCheck == errSecDuplicateItem, "Problem adding the peer public key to the keychain, OSStatus == \(sanityCheck).")
-        persistPeer = umPersistPeer?.takeRetainedValue()
         
         if persistPeer != nil {
             peerKeyRef = self.getKeyRefWithPersistentKeyRef(persistPeer!)
@@ -274,14 +269,12 @@ class SecKeyWrapper: NSObject {
             peerPublicKeyAttr.removeValueForKey(kSecValueData)
             peerPublicKeyAttr[kSecReturnRef] = true
             // Let's retry a different way.
-            var umPeerKeyRef: Unmanaged<AnyObject>? = nil
-            sanityCheck = SecItemCopyMatching(peerPublicKeyAttr, &umPeerKeyRef)
-            peerKeyRef = umPeerKeyRef?.takeRetainedValue() as! SecKey?
+            sanityCheck = SecItemCopyMatching(peerPublicKeyAttr, &peerKeyRef)
         }
         
         assert(sanityCheck == noErr && peerKeyRef != nil, "Problem acquiring reference to the public key, OSStatus == \(sanityCheck).")
         
-        return peerKeyRef
+        return peerKeyRef as! SecKey?
     }
     
     func removePeerPublicKey(peerName: String) {
@@ -309,7 +302,7 @@ class SecKeyWrapper: NSObject {
         var cipherBufferSize = SecKeyGetBlockSize(publicKey)
         let keyBufferSize = symmetricKey.length
         
-        if kTypeOfWrapPadding == kSecPaddingNone {
+        if kTypeOfWrapPadding == SecPadding.None {
             assert(keyBufferSize <= cipherBufferSize, "Nonce integer is too large and falls outside multiplicative group.")
         } else {
             assert(keyBufferSize <= (cipherBufferSize - 11), "Nonce integer is too large and falls outside multiplicative group.")
@@ -320,7 +313,7 @@ class SecKeyWrapper: NSObject {
         
         // Encrypt using the public key.
         sanityCheck = SecKeyEncrypt(publicKey,
-            SecPadding(kTypeOfWrapPadding),
+            kTypeOfWrapPadding,
             UnsafePointer(symmetricKey.bytes),
             keyBufferSize,
             &cipherBuffer,
@@ -344,7 +337,7 @@ class SecKeyWrapper: NSObject {
         assert(privateKey != nil, "No private key found in the keychain.")
         
         // Calculate the buffer sizes.
-        let cipherBufferSize = SecKeyGetBlockSize(privateKey)
+        let cipherBufferSize = SecKeyGetBlockSize(privateKey!)
         var keyBufferSize = wrappedSymmetricKey.length
         
         assert(keyBufferSize <= cipherBufferSize, "Encrypted nonce is too large and falls outside multiplicative group.")
@@ -354,8 +347,8 @@ class SecKeyWrapper: NSObject {
         var keyBuffer: [UInt8] = Array(count: keyBufferSize, repeatedValue: 0x0)
         
         // Decrypt using the private key.
-        sanityCheck = SecKeyDecrypt(	privateKey,
-            SecPadding(kTypeOfWrapPadding),
+        sanityCheck = SecKeyDecrypt(privateKey!,
+            kTypeOfWrapPadding,
             UnsafePointer(wrappedSymmetricKey.bytes),
             cipherBufferSize,
             &keyBuffer,
@@ -394,14 +387,14 @@ class SecKeyWrapper: NSObject {
         var signedHash: NSData? = nil
         
         let privateKey = self.getPrivateKeyRef()
-        var signedHashBytesSize = SecKeyGetBlockSize(privateKey)
+        var signedHashBytesSize = SecKeyGetBlockSize(privateKey!)
         
         // Malloc a buffer to hold signature.
         var signedHashBytes: [UInt8] = Array(count: signedHashBytesSize, repeatedValue: 0x0)
         
         // Sign the SHA1 hash.
-        sanityCheck = SecKeyRawSign(privateKey,
-            SecPadding(kTypeOfSigPadding),
+        sanityCheck = SecKeyRawSign(privateKey!,
+            kTypeOfSigPadding,
             UnsafePointer(self.getHashBytes(plainText).bytes),
             kChosenDigestLength,
             &signedHashBytes,
@@ -423,7 +416,7 @@ class SecKeyWrapper: NSObject {
         let signedHashBytesSize = SecKeyGetBlockSize(publicKey)
         
         sanityCheck = SecKeyRawVerify(publicKey,
-            SecPadding(kTypeOfSigPadding),
+            kTypeOfSigPadding,
             UnsafePointer(self.getHashBytes(plainText).bytes),
             kChosenDigestLength,
             UnsafePointer(sig.bytes),
@@ -551,7 +544,7 @@ class SecKeyWrapper: NSObject {
     
     func getPublicKeyRef() -> SecKey? {
         var sanityCheck = noErr
-        var publicKeyReference: SecKey? = nil
+        var publicKeyReference: AnyObject? = nil
         
         if publicKeyRef == nil {
             
@@ -563,24 +556,21 @@ class SecKeyWrapper: NSObject {
                 kSecReturnRef: true]
             
             // Get the key.
-            var umPublicKeyReference: Unmanaged<AnyObject>? = nil
-            sanityCheck = SecItemCopyMatching(queryPublicKey, &umPublicKeyReference)
+            sanityCheck = SecItemCopyMatching(queryPublicKey, &publicKeyReference)
             
             if sanityCheck != noErr {
                 publicKeyReference = nil
-            } else {
-                publicKeyReference = umPublicKeyReference?.takeRetainedValue() as! SecKey?
             }
             
         } else {
             publicKeyReference = publicKeyRef
         }
         
-        return publicKeyReference
+        return publicKeyReference as! SecKey?
     }
     
     func getPublicKeyBits() -> NSData? {
-        var publicKeyBits: NSData? = nil
+        var publicKeyBits: AnyObject? = nil
         
         // Set the public key query dictionary.
         let queryPublicKey: [NSObject: AnyObject] = [
@@ -590,21 +580,18 @@ class SecKeyWrapper: NSObject {
             kSecReturnData: true]
         
         // Get the key bits.
-        var umPublicKeyBits: Unmanaged<AnyObject>? = nil
-        let sanityCheck = SecItemCopyMatching(queryPublicKey, &umPublicKeyBits)
+        let sanityCheck = SecItemCopyMatching(queryPublicKey, &publicKeyBits)
         
         if sanityCheck != noErr {
             publicKeyBits = nil
-        } else {
-            publicKeyBits = umPublicKeyBits?.takeRetainedValue() as! NSData?
         }
         
         
-        return publicKeyBits
+        return publicKeyBits as! NSData?
     }
     
     func getPrivateKeyRef() -> SecKey? {
-        var privateKeyReference: SecKey? = nil
+        var privateKeyReference: AnyObject? = nil
         
         if privateKeyRef == nil {
             
@@ -616,24 +603,21 @@ class SecKeyWrapper: NSObject {
                 kSecReturnRef: true]
             
             // Get the key.
-            var umPrivateKeyReference: Unmanaged<AnyObject>? = nil
-            let sanityCheck = SecItemCopyMatching(queryPrivateKey, &umPrivateKeyReference)
+            let sanityCheck = SecItemCopyMatching(queryPrivateKey, &privateKeyReference)
             
             if sanityCheck != noErr {
                 privateKeyReference = nil
-            } else {
-                privateKeyReference = umPrivateKeyReference?.takeRetainedValue() as! SecKey?
             }
             
         } else {
             privateKeyReference = privateKeyRef
         }
         
-        return privateKeyReference
+        return privateKeyReference as! SecKey?
     }
     
     func getSymmetricKeyBytes() -> NSData? {
-        var symmetricKeyReturn: NSData? = nil
+        var symmetricKeyReturn: AnyObject? = nil
         
         if self.symmetricKeyRef == nil {
             
@@ -645,11 +629,10 @@ class SecKeyWrapper: NSObject {
                 kSecReturnData: true]
             
             // Get the key bits.
-            var umSymmetricKeyReturn: Unmanaged<AnyObject>? = nil
-            let sanityCheck = SecItemCopyMatching(querySymmetricKey, &umSymmetricKeyReturn)
+            let sanityCheck = SecItemCopyMatching(querySymmetricKey, &symmetricKeyReturn)
             
-            if sanityCheck == noErr && umSymmetricKeyReturn != nil {
-                self.symmetricKeyRef = (umSymmetricKeyReturn!.takeRetainedValue() as! NSData)
+            if sanityCheck == noErr && symmetricKeyReturn != nil {
+                self.symmetricKeyRef = symmetricKeyReturn as! NSData?
             } else {
                 self.symmetricKeyRef = nil
             }
@@ -658,7 +641,7 @@ class SecKeyWrapper: NSObject {
             symmetricKeyReturn = self.symmetricKeyRef
         }
         
-        return symmetricKeyReturn
+        return symmetricKeyReturn as! NSData?
     }
     
     func getPersistentKeyRefWithKeyRef(keyRef: SecKey) -> AnyObject? {
@@ -669,14 +652,14 @@ class SecKeyWrapper: NSObject {
             kSecReturnPersistentRef: true]
         
         // Get the persistent key reference.
-        var umPersistentRef: Unmanaged<AnyObject>? = nil
-        let _ = SecItemCopyMatching(queryKey, &umPersistentRef)
+        var persistentRef: AnyObject? = nil
+        let _ = SecItemCopyMatching(queryKey, &persistentRef)
         
-        return umPersistentRef?.takeRetainedValue()
+        return persistentRef
     }
     
     func getKeyRefWithPersistentKeyRef(persistentRef: AnyObject) -> SecKey? {
-        var keyRef: SecKey? = nil
+        var keyRef: AnyObject? = nil
         
         
         // Set the SecKeyRef query dictionary.
@@ -685,11 +668,9 @@ class SecKeyWrapper: NSObject {
             kSecReturnRef: true]
         
         // Get the persistent key reference.
-        var umKeyRef: Unmanaged<AnyObject>? = nil
-        let _ = SecItemCopyMatching(queryKey, &umKeyRef)
-        keyRef = umKeyRef?.takeRetainedValue() as! SecKey?
+        let _ = SecItemCopyMatching(queryKey, &keyRef)
         
-        return keyRef
+        return keyRef as! SecKey?
     }
     
 }
