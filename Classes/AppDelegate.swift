@@ -78,8 +78,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         
         var flags: SCNetworkReachabilityFlags = []
-        let gotFlags = SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags)
-        if gotFlags == Boolean(0) {
+        guard SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags) else {
             return false
         }
         
