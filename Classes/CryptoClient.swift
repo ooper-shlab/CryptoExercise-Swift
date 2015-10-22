@@ -91,7 +91,7 @@ class CryptoClient: NSObject, NSStreamDelegate {
         case NSStreamEvent.OpenCompleted:
             if self.ostr?.streamStatus == .Open && self.istr?.streamStatus == .Open && !self.isConnected {
                 dispatch_async(dispatch_get_main_queue()) {
-                    delegate?.cryptoClientDidCompleteConnection(self)
+                    self.delegate?.cryptoClientDidCompleteConnection(self)
                 }
                 self.isConnected = true
             }
@@ -108,20 +108,20 @@ class CryptoClient: NSObject, NSStreamDelegate {
         case NSStreamEvent.HasBytesAvailable:
             if stream === self.istr {
                 dispatch_async(dispatch_get_main_queue()) {
-                    delegate?.cryptoClientWillBeginReceivingData(self)
+                    self.delegate?.cryptoClientWillBeginReceivingData(self)
                 }
                 let theBlob = self.receiveData()
                 self.istr?.close()
                 dispatch_async(dispatch_get_main_queue()) {
-                    delegate?.cryptoClientDidFinishReceivingData(self)
+                    self.delegate?.cryptoClientDidFinishReceivingData(self)
                 }
                 if let blob = theBlob {
                     dispatch_async(dispatch_get_main_queue()) {
-                        delegate?.cryptoClientWillBeginVerifyingData(self)
+                        self.delegate?.cryptoClientWillBeginVerifyingData(self)
                     }
                     let verify = self.verifyBlob(blob)
                     dispatch_async(dispatch_get_main_queue()) {
-                        delegate?.cryptoClientDidFinishVerifyingData(self, verified: verify)
+                        self.delegate?.cryptoClientDidFinishVerifyingData(self, verified: verify)
                     }
                 } else {
                     assert(false, "Connected Server sent too large of a blob.")
