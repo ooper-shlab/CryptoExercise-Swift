@@ -59,24 +59,24 @@ import UIKit
 @objc(CryptoServerRequestDelegate)
 protocol CryptoServerRequestDelegate {
     
-    func cryptoServerRequestDidFinish(request: CryptoServerRequest)
-    func cryptoServerRequestDidReceiveError(request: CryptoServerRequest)
+    func cryptoServerRequestDidFinish(_ request: CryptoServerRequest)
+    func cryptoServerRequestDidReceiveError(_ request: CryptoServerRequest)
     
 }
 
 @objc(CryptoServerRequest)
-class CryptoServerRequest: NSObject, NSStreamDelegate {
+class CryptoServerRequest: NSObject, StreamDelegate {
     
-    var istr: NSInputStream
-    var ostr: NSOutputStream
+    var istr: InputStream
+    var ostr: OutputStream
     var peerName: String
-    var peerPublicKey: NSData? = nil
-    weak var delegate: protocol<CryptoServerRequestDelegate, NSObjectProtocol>?
+    var peerPublicKey: Data? = nil
+    weak var delegate: CryptoServerRequestDelegate?
     
-    init(inputStream readStream: NSInputStream,
-        outputStream writeStream: NSOutputStream,
+    init(inputStream readStream: InputStream,
+        outputStream writeStream: OutputStream,
         peer peerAddress: String,
-        delegate anObject: protocol<CryptoServerRequestDelegate, NSObjectProtocol>) {
+        delegate anObject: CryptoServerRequestDelegate) {
             
             self.istr = readStream
             self.ostr = writeStream
@@ -88,22 +88,22 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
     func runProtocol() {
         
         self.istr.delegate = self
-        self.istr.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
+        self.istr.schedule(in: .current, forMode: .commonModes)
         self.istr.open()
         self.ostr.delegate = self
-        self.ostr.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
+        self.ostr.schedule(in: .current, forMode: .commonModes)
         self.ostr.open()
     }
     
-    func stream(stream: NSStream, handleEvent eventCode: NSStreamEvent) {
+    func stream(_ stream: Stream, handle eventCode: Stream.Event) {
         switch eventCode {
-        case NSStreamEvent.HasSpaceAvailable:
+        case Stream.Event.hasSpaceAvailable:
             if stream === self.ostr {
-                if (stream as! NSOutputStream).hasSpaceAvailable && self.peerPublicKey != nil {
+                if (stream as! OutputStream).hasSpaceAvailable && self.peerPublicKey != nil {
                     self.createBlobAndSend()
                 }
             }
-        case NSStreamEvent.HasBytesAvailable:
+        case Stream.Event.hasBytesAvailable:
             if stream === self.istr {
                 
                 let publicKey = self.receiveData()
@@ -119,7 +119,7 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
                     //delegate?.cryptoServerRequestDidReceiveError(self)
                 }
             }
-        case NSStreamEvent.ErrorOccurred:
+        case Stream.Event.errorOccurred:
             // No debugging facility because we don't want to exit even in DEBUG.
             // It's annoying.
             NSLog("stream: %@", stream)
@@ -140,7 +140,7 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
             assert(false, "Something wrong with the building of the crypto blob.\n")
         }
         
-        assert(sentBytes == cryptoBlob!.length, "Only sent \(sentBytes) bytes of crypto blob.")
+        assert(sentBytes == cryptoBlob!.count, "Only sent \(sentBytes) bytes of crypto blob.")
         
         self.ostr.close()
         
@@ -148,21 +148,25 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
         delegate?.cryptoServerRequestDidFinish(self)
     }
     
-    func receiveData() -> NSData? {
+    func receiveData() -> Data? {
         
         var lengthByte: size_t = 0
-        var retBlob: NSMutableData? = nil
+        var retBlob: Data? = nil
         
-        var len = withUnsafeMutablePointer(&lengthByte) {lengthPtr in
-            self.istr.read(UnsafeMutablePointer(lengthPtr), maxLength: sizeof(size_t))
+        var len = withUnsafeMutablePointer(to: &lengthByte) {lengthPtr in
+            lengthPtr.withMemoryRebound(to: UInt8.self, capacity: MemoryLayout<size_t>.size) {
+                self.istr.read($0, maxLength: MemoryLayout<size_t>.size)
+            }
         }
         
-        assert(len == sizeof(size_t), "Read failure errno: [\(errno)]")
+        assert(len == MemoryLayout<size_t>.size, "Read failure errno: [\(errno)]")
         
-        if lengthByte <= kMaxMessageLength && len == sizeof(size_t) {
-            retBlob = NSMutableData(length: lengthByte)
+        if lengthByte <= kMaxMessageLength && len == MemoryLayout<size_t>.size {
+            retBlob = Data(count: lengthByte)
             
-            len = self.istr.read(UnsafeMutablePointer(retBlob!.mutableBytes), maxLength: lengthByte)
+            len = retBlob!.withUnsafeMutableBytes{mutableBytes in
+                self.istr.read(mutableBytes, maxLength: lengthByte)
+            }
             
             assert(len == lengthByte, "Read failure, after buffer errno: [\(errno)]")
             
@@ -174,67 +178,69 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
         return retBlob
     }
     
-    func sendData(outData: NSData?) -> size_t {
+    func sendData(_ outData: Data?) -> size_t {
         var len: size_t = 0
         
         if let data = outData {
-            len = data.length
+            len = data.count
             if len > 0 {
-                let longSize = sizeof(size_t)
+                let longSize = MemoryLayout<size_t>.size
                 
-                let message = NSMutableData(capacity: len + longSize)!
-                message.appendBytes(&len, length: longSize)
-                message.appendData(data)
+                var message = Data(capacity: len + longSize)
+                message.append(Data(bytes: &len, count: longSize))
+                message.append(data)
                 
-                self.ostr.write(UnsafePointer(message.bytes), maxLength: message.length)
+                message.withUnsafeBytes{bytes in
+                    _ = self.ostr.write(bytes, maxLength: message.count)
+                }
             }
         }
         
         return len
     }
     
-    func createBlob(peer: String, peerPublicKey peerKey: NSData) -> NSData? {
-        var message: NSData? = nil
-        var error: NSError? = nil
+    func createBlob(_ peer: String, peerPublicKey peerKey: Data) -> Data? {
+        var message: Data? = nil
+        var error: Error? = nil
         var pad: CCOptions = 0
         
         let messageHolder = NSMutableDictionary()
-        let symmetricKey = SecKeyWrapper.sharedWrapper().getSymmetricKeyBytes()
+        let symmetricKey = SecKeyWrapper.shared.getSymmetricKeyBytes()
         
         // Build the plain text.
-        let plainText = NSData(bytes: kMessageBody, length: kMessageBody.utf8.count + 1)
+        let plainText = Data(bytes: kMessageBody, count: kMessageBody.utf8.count + 1)
         
         // Acquire handle to public key.
-        let peerPublicKeyRef = SecKeyWrapper.sharedWrapper().addPeerPublicKey(peer, keyBits: peerKey)
+        let peerPublicKeyRef = SecKeyWrapper.shared.addPeerPublicKey(peer, keyBits: peerKey)
         
         assert(peerPublicKeyRef != nil, "Could not establish client handle to public key.")
         
         if peerPublicKey != nil {
             
             // Add the public key.
-            messageHolder[kPubTag] = SecKeyWrapper.sharedWrapper().getPublicKeyBits()
+            messageHolder[kPubTag] = SecKeyWrapper.shared.getPublicKeyBits()
             
             // Add the signature to the message holder.
-            messageHolder[kSigTag] = SecKeyWrapper.sharedWrapper().getSignatureBytes(plainText)
+            messageHolder[kSigTag] = SecKeyWrapper.shared.getSignatureBytes(plainText)
             
             // Add the encrypted message.
-            messageHolder[kMesTag] = SecKeyWrapper.sharedWrapper().doCipher(plainText, key: symmetricKey!, context: CCOperation(kCCEncrypt), padding: &pad)
+            messageHolder[kMesTag] = SecKeyWrapper.shared.doCipher(plainText, key: symmetricKey!, context: CCOperation(kCCEncrypt), padding: &pad)
             
             // Add the padding PKCS#7 flag.
             messageHolder[kPadTag] = UInt(pad)
             
             // Add the wrapped symmetric key.
-            messageHolder[kSymTag] = SecKeyWrapper.sharedWrapper().wrapSymmetricKey(symmetricKey!, keyRef: peerPublicKeyRef!)
+            messageHolder[kSymTag] = SecKeyWrapper.shared.wrapSymmetricKey(symmetricKey!, keyRef: peerPublicKeyRef!)
             
             do {
-                message = try NSPropertyListSerialization.dataWithPropertyList(messageHolder, format: .BinaryFormat_v1_0, options: 0)
+                message = try PropertyListSerialization.data(fromPropertyList: messageHolder, format: .binary, options: 0)
             } catch let error1 as NSError {
                 error = error1
                 message = nil
             }
             
             // All done. Time to remove the public key from the keychain.
-            SecKeyWrapper.sharedWrapper().removePeerPublicKey(peer)
+            SecKeyWrapper.shared.removePeerPublicKey(peer)
         } else {
             fatalError("Could not establish client handle to public key.")
         }
@@ -246,9 +252,9 @@ class CryptoServerRequest: NSObject, NSStreamDelegate {
     }
     
     deinit {
-        istr.removeFromRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
+        istr.remove(from: .current, forMode: .commonModes)
         
-        ostr.removeFromRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
+        ostr.remove(from: .current, forMode: .commonModes)
         
         
     }

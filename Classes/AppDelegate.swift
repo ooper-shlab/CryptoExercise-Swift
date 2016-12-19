@@ -62,17 +62,19 @@ import SystemConfiguration
 class AppDelegate: UIResponder, UIApplicationDelegate {
     @IBOutlet var window: UIWindow?
     @IBOutlet var navController: UINavigationController!
-    var cryptoQueue: NSOperationQueue!
+    var cryptoQueue: OperationQueue!
     
     
-    func isNetworkAvailableFlags(outFlags: UnsafeMutablePointer<SCNetworkReachabilityFlags>) -> Bool {
+    func isNetworkAvailableFlags(_ outFlags: UnsafeMutablePointer<SCNetworkReachabilityFlags>?) -> Bool {
         var zeroAddress = sockaddr_in()
         
-        zeroAddress.sin_len = UInt8(strideofValue(zeroAddress))
+        zeroAddress.sin_len = UInt8(MemoryLayout.stride(ofValue: zeroAddress))
         zeroAddress.sin_family = sa_family_t(AF_INET)
         
-        guard let defaultRouteReachability = withUnsafePointer(&zeroAddress, {addrPtr in
-            SCNetworkReachabilityCreateWithAddress(nil, UnsafePointer<sockaddr>(addrPtr))
+        guard let defaultRouteReachability = withUnsafePointer(to: &zeroAddress, {addrPtr in
+            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                SCNetworkReachabilityCreateWithAddress(nil, $0)
+            }
         }) else {
            return false
         }
@@ -84,7 +86,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // kSCNetworkReachabilityFlagsReachable indicates that the specified nodename or address can
         // be reached using the current network configuration.
-        let isReachable = flags.contains(.Reachable)
+        let isReachable = flags.contains(.reachable)
         
         // This flag indicates that the specified nodename or address can
         // be reached using the current network configuration, but a
@@ -93,29 +95,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // If the flag is false, we don't have a connection. But because CFNetwork
         // automatically attempts to bring up a WWAN connection, if the WWAN reachability
         // flag is present, a connection is not required.
-        var noConnectionRequired = !flags.contains(.ConnectionRequired)
-        if flags.contains(.IsWWAN) {
+        var noConnectionRequired = !flags.contains(.connectionRequired)
+        if flags.contains(.isWWAN) {
             noConnectionRequired = true
         }
         
         // Callers of this method might want to use the reachability flags, so if an 'out' parameter
         // was passed in, assign the reachability flags to it.
         if outFlags != nil {
-            outFlags.memory = flags
+            outFlags?.pointee = flags
         }
         
         return isReachable && noConnectionRequired
     }
     
-    func applicationDidFinishLaunching(application: UIApplication) {
+    func applicationDidFinishLaunching(_ application: UIApplication) {
         // Is WiFi network available? That's necessary to use Bonjour.
         if !self.isNetworkAvailableFlags(nil) {
             if #available(iOS 8.0, *) {
                 let alertController = UIAlertController(title: "No WiFi network available.",
                     message: "Exit this app and enable WiFi using the Settings application.",
-                    preferredStyle: .Alert)
-                alertController.addAction(UIAlertAction(title: "OK", style: .Cancel, handler: nil))
-                self.window?.rootViewController?.presentViewController(alertController, animated: true, completion: nil)
+                    preferredStyle: .alert)
+                alertController.addAction(UIAlertAction(title: "OK", style: .cancel, handler: nil))
+                self.window?.rootViewController?.present(alertController, animated: true, completion: nil)
             } else {
                 let alert = UIAlertView(title: "No WiFi network available.",
                     message: "Exit this app and enable WiFi using the Settings application.",
@@ -127,7 +129,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             // Add the controller's view as a subview of the window
             self.window?.addSubview(navController.view)
             
-            let theQueue = NSOperationQueue()
+            let theQueue = OperationQueue()
             self.cryptoQueue = theQueue
         }
     }

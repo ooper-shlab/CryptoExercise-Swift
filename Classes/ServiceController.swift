@@ -57,8 +57,8 @@
 import UIKit
 
 @objc(ServiceController)
-class ServiceController: UIViewController, CryptoClientDelegate, NSNetServiceDelegate {
-    var service: NSNetService? {
+class ServiceController: UIViewController, CryptoClientDelegate, NetServiceDelegate {
+    var service: NetService? {
         willSet {
             willSetService(newValue)
         }
@@ -73,43 +73,43 @@ class ServiceController: UIViewController, CryptoClientDelegate, NSNetServiceDel
     @IBOutlet var statusLog: UITextView!
     
     override func viewDidLoad() {
-        self.view.backgroundColor = UIColor.groupTableViewBackgroundColor()
+        self.view.backgroundColor = UIColor.groupTableViewBackground
     }
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         serviceLabel.text = self.service?.name
-        connectButton.enabled = false
+        connectButton.isEnabled = false
         spinner.startAnimating()
         statusLog.text = "Resolving service..."
     }
     
-    private func willSetService(aService: NSNetService?) {
+    private func willSetService(_ aService: NetService?) {
         self.service?.stop()
     }
-    private func didSetService(oldValue: NSNetService?) {
+    private func didSetService(_ oldValue: NetService?) {
         self.service?.delegate = self
         // Attempt to resolve the self.service. A value of 0.0 sets an unlimited time to resolve it. The user can
         // choose to cancel the resolve by selecting another self.service in the table view.
-        self.service?.resolveWithTimeout(0.0)
+        self.service?.resolve(withTimeout: 0.0)
     }
     
-    func netServiceDidResolveAddress(sender: NSNetService) {
+    func netServiceDidResolveAddress(_ sender: NetService) {
         spinner.stopAnimating()
-        self.spinner.hidden = true
+        self.spinner.isHidden = true
         self.statusLog.text? += " Done\n"
-        self.connectButton.enabled = true
+        self.connectButton.isEnabled = true
     }
     
-    func cryptoClientDidReceiveError(cryptoClient: CryptoClient) {
-        self.navigationController?.popViewControllerAnimated(true)
+    func cryptoClientDidReceiveError(_ cryptoClient: CryptoClient) {
+        _ = self.navigationController?.popViewController(animated: true)
         self.cryptoClient = nil
     }
     
     @IBAction func connect() {
         statusLog.text = "Resolving service... Done\n"
         spinner.startAnimating()
-        self.spinner.hidden = false
-        self.connectButton.enabled = false
+        self.spinner.isHidden = false
+        self.connectButton.isEnabled = false
         self.statusLog.text? += "Connecting..."
         
         let thisClient = CryptoClient(service: self.service, delegate: self)
@@ -117,27 +117,27 @@ class ServiceController: UIViewController, CryptoClientDelegate, NSNetServiceDel
         self.cryptoClient!.runConnection()
     }
     
-    func cryptoClientDidCompleteConnection(cryptoClient: CryptoClient) {
+    func cryptoClientDidCompleteConnection(_ cryptoClient: CryptoClient) {
         self.statusLog.text? += " Done\n"
     }
     
-    func cryptoClientWillBeginReceivingData(cryptoClient: CryptoClient) {
+    func cryptoClientWillBeginReceivingData(_ cryptoClient: CryptoClient) {
         self.statusLog.text? += "Receiving data..."
     }
     
-    func cryptoClientDidFinishReceivingData(cryptoClient: CryptoClient) {
+    func cryptoClientDidFinishReceivingData(_ cryptoClient: CryptoClient) {
         self.statusLog.text? += " Done\n"
     }
     
-    func cryptoClientWillBeginVerifyingData(cryptoClient: CryptoClient) {
+    func cryptoClientWillBeginVerifyingData(_ cryptoClient: CryptoClient) {
         self.statusLog.text? += "Verifying blob..."
     }
     
-    func cryptoClientDidFinishVerifyingData(cryptoClient: CryptoClient, verified: Bool) {
+    func cryptoClientDidFinishVerifyingData(_ cryptoClient: CryptoClient, verified: Bool) {
         self.statusLog.text? += (verified ? " Verified!" : " Failed!")
         spinner.stopAnimating()
-        self.spinner.hidden = true
-        self.connectButton.enabled = true
+        self.spinner.isHidden = true
+        self.connectButton.isEnabled = true
         self.cryptoClient = nil
     }
     

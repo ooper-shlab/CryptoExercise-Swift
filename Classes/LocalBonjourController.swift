@@ -58,10 +58,10 @@ import UIKit
 
 
 @objc(LocalBonjourController)
-class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
+class LocalBonjourController: UIViewController, NetServiceBrowserDelegate, UITableViewDataSource, UITableViewDelegate {
     
-    var netServiceBrowser: NSNetServiceBrowser?
-    var services: [NSNetService] = []
+    var netServiceBrowser: NetServiceBrowser?
+    var services: [NetService] = []
     @IBOutlet var tableView: UITableView!
     private lazy var _serviceController: ServiceController = ServiceController(nibName: "ServiceView", bundle: nil)
     var serviceController: ServiceController {
@@ -79,12 +79,12 @@ class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
         self.services = []
         
         // Check to see if keys have been generated.
-        if SecKeyWrapper.sharedWrapper().getPublicKeyRef() == nil ||
-            SecKeyWrapper.sharedWrapper().getPrivateKeyRef() == nil ||
-            SecKeyWrapper.sharedWrapper().getSymmetricKeyBytes() == nil {
+        if SecKeyWrapper.shared.getPublicKeyRef() == nil ||
+            SecKeyWrapper.shared.getPrivateKeyRef() == nil ||
+            SecKeyWrapper.shared.getSymmetricKeyBytes() == nil {
                 
-                SecKeyWrapper.sharedWrapper().generateKeyPair(kAsymmetricSecKeyPairModulusSize)
-                SecKeyWrapper.sharedWrapper().generateSymmetricKey()
+                SecKeyWrapper.shared.generateKeyPair(kAsymmetricSecKeyPairModulusSize)
+                SecKeyWrapper.shared.generateSymmetricKey()
         }
         
         let thisServer = CryptoServer()
@@ -95,48 +95,49 @@ class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
     @IBAction func regenerateKeys() {
         let controller = self.keyGenerationController
         controller.server = cryptoServer
-        self.navigationController?.presentViewController(controller, animated: true, completion: nil)
+        self.navigationController?.present(controller, animated: true, completion: nil)
     }
     
-    override func shouldAutorotate() -> Bool {
+    override var shouldAutorotate: Bool {
         return false
     }
-    override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         // Return YES for supported orientations
-        return UIInterfaceOrientationMask.Portrait
+        return UIInterfaceOrientationMask.portrait
     }
     
     // Creates an NSNetServiceBrowser that searches for services of a particular type in a particular domain.
     // If a service is currently being resolved, stop resolving it and stop the service browser from
     // discovering other services.
+    @discardableResult
     func searchForCryptoServices() -> Bool {
         self.netServiceBrowser?.stop()
         self.services.removeAll()
         tableView.reloadData()
         
-        let aNetServiceBrowser = NSNetServiceBrowser()
+        let aNetServiceBrowser = NetServiceBrowser()
         aNetServiceBrowser.delegate = self
         self.netServiceBrowser = aNetServiceBrowser
         
-        self.netServiceBrowser!.searchForServicesOfType(kBonjourServiceType, inDomain: "local")
+        self.netServiceBrowser!.searchForServices(ofType: kBonjourServiceType, inDomain: "local")
         
         return true
     }
     
-    func netServiceBrowser(aNetServiceBrowser: NSNetServiceBrowser, didRemoveService service: NSNetService, moreComing: Bool) {
-        if let index = self.services.indexOf(service) {self.services.removeAtIndex(index)}
+    func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
+        if let index = self.services.index(of: service) {self.services.remove(at: index)}
         if !moreComing { tableView.reloadData() }
     }
-    
-    func netServiceBrowser(aNetServiceBrowser: NSNetServiceBrowser, didFindService service: NSNetService, moreComing: Bool) {
+
+    func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
         
         #if ALLOW_TO_CONNECT_TO_SELF
             self.services.append(service)
-            #else
+        #else
             // Don't display our published record
             if cryptoServer.netService?.name != service.name {
-            // If a service came online, add it to the list and update the table view if no more events are queued.
-            self.services.append(service)
+                // If a service came online, add it to the list and update the table view if no more events are queued.
+                self.services.append(service)
             
             }
         #endif
@@ -146,27 +147,27 @@ class LocalBonjourController: UIViewController, NSNetServiceBrowserDelegate {
         }
     }
     
-    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return services.count
     }
     
-    func tableView(tv: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        var cell = tableView.dequeueReusableCellWithIdentifier("MyCell") as UITableViewCell?
+    func tableView(_ tv: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        var cell = tableView.dequeueReusableCell(withIdentifier: "MyCell") as UITableViewCell?
         if cell == nil {
-            cell = UITableViewCell(style: .Default, reuseIdentifier: "MyCell")
+            cell = UITableViewCell(style: .default, reuseIdentifier: "MyCell")
         }
         cell!.textLabel!.text = services[indexPath.row].name
-        cell!.accessoryType = .DisclosureIndicator
+        cell!.accessoryType = .disclosureIndicator
         
         return cell!
     }
     
-    func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         self.serviceController.service = self.services[indexPath.row]
         self.navigationController?.pushViewController(self.serviceController, animated: true)
     }
     
-    override func viewDidAppear(animated: Bool) {
+    override func viewDidAppear(_ animated: Bool) {
         self.searchForCryptoServices()
     }
     

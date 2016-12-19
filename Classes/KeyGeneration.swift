@@ -64,17 +64,17 @@ class KeyGeneration: UIViewController {
     var server: CryptoServer?
 
     override func viewDidLoad() {
-        self.view.backgroundColor = UIColor.groupTableViewBackgroundColor()
+        self.view.backgroundColor = .groupTableViewBackground
     }
 
     @IBAction func startGeneratingKeys() {
         server?.teardown()
     // start generation operation
         spinner.startAnimating()
-        spinner.hidden = false
-        label.hidden = false
-        let appDelegate = UIApplication.sharedApplication().delegate as! AppDelegate
-        let genOp = NSBlockOperation {
+        spinner.isHidden = false
+        label.isHidden = false
+        let appDelegate = UIApplication.shared.delegate as! AppDelegate
+        let genOp = BlockOperation {
             self.generateKeyPairOperation()
         }
         appDelegate.cryptoQueue.addOperation(genOp)
@@ -83,9 +83,9 @@ class KeyGeneration: UIViewController {
     func generateKeyPairOperation() {
         autoreleasepool {
     // Generate the asymmetric key (public and private)
-            SecKeyWrapper.sharedWrapper().generateKeyPair(kAsymmetricSecKeyPairModulusSize)
-            SecKeyWrapper.sharedWrapper().generateSymmetricKey()
-            dispatch_async(dispatch_get_main_queue()) {
+            SecKeyWrapper.shared.generateKeyPair(kAsymmetricSecKeyPairModulusSize)
+            SecKeyWrapper.shared.generateSymmetricKey()
+            DispatchQueue.main.async {
                 self.generateKeyPairCompleted()
             }
         }
@@ -94,20 +94,20 @@ class KeyGeneration: UIViewController {
     private func generateKeyPairCompleted() {
         server?.run()
         spinner.stopAnimating()
-        spinner.hidden = true
-        label.hidden = true
-        self.dismissViewControllerAnimated(true, completion: nil)
+        spinner.isHidden = true
+        label.isHidden = true
+        self.dismiss(animated: true, completion: nil)
     }
 
     @IBAction func cancelKeyGeneration() {
-        self.dismissViewControllerAnimated(true, completion: nil)
+        self.dismiss(animated: true, completion: nil)
     }
 
-    override func shouldAutorotate() -> Bool {
+    override var shouldAutorotate: Bool {
         return false
     }
-    override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
-        return UIInterfaceOrientationMask.Portrait
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        return UIInterfaceOrientationMask.portrait
     }
 
 

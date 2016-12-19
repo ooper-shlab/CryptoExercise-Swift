@@ -62,9 +62,9 @@ let kCryptoServerNoSocketsAvailable = 3
 let kCryptoServerCouldNotBindOrEstablishNetService = 4
 
 @objc(CryptoServer)
-class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate {
+class CryptoServer: NSObject, CryptoServerRequestDelegate, NetServiceDelegate {
     var connectionBag: Set<CryptoServerRequest> = []
-    var netService: NSNetService?
+    var netService: NetService?
     
     private let CryptoServerErrorDomain = "CryptoServerErrorDomain"
     
@@ -77,23 +77,24 @@ class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate 
         
     }
     
-    func applicationWillTerminate(application: UIApplication) {
+    //### Is this ever be called?
+    func applicationWillTerminate(_ application: UIApplication) {
         self.teardown()
     }
     
-    func netServiceDidPublish(sender: NSNetService) {
+    func netServiceDidPublish(_ sender: NetService) {
         self.netService = sender
     }
-    func netService(sender: NSNetService, didNotPublish errorDict: [String: NSNumber]) {
+    func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
         fatalError(errorDict.description)
     }
     
-    func netService(sender: NSNetService, didAcceptConnectionWithInputStream readStream: NSInputStream, outputStream writeStream: NSOutputStream) {
+    func netService(_ sender: NetService, didAcceptConnectionWith readStream: InputStream, outputStream writeStream: OutputStream) {
         //###Taken from Apple's sample code WiTap.
         // Due to a bug <rdar://problem/15626440>, this method is called on some unspecified
         // queue rather than the queue associated with the net service (which in this case
         // is the main queue).  Work around this by bouncing to the main queue.
-        NSOperationQueue.mainQueue().addOperationWithBlock {
+        OperationQueue.main.addOperation {
             //### We cannot get client peer info here?
             let peer: String? = "Generic Peer"
 //        CFSocketNativeHandle nativeSocketHandle = *(CFSocketNativeHandle *)data;
@@ -109,13 +110,13 @@ class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate 
 //			peer = @"Generic Peer";
 //		}
             
-            CFReadStreamSetProperty(readStream, kCFStreamPropertyShouldCloseNativeSocket, kCFBooleanTrue)
-            CFWriteStreamSetProperty(writeStream, kCFStreamPropertyShouldCloseNativeSocket, kCFBooleanTrue)
+            CFReadStreamSetProperty(readStream, CFStreamPropertyKey(rawValue: kCFStreamPropertyShouldCloseNativeSocket), kCFBooleanTrue)
+            CFWriteStreamSetProperty(writeStream, CFStreamPropertyKey(rawValue: kCFStreamPropertyShouldCloseNativeSocket), kCFBooleanTrue)
             self.handleConnection(peer, inputStream: readStream, outputStream: writeStream)
         }
     }
     
-    func setupServer(error: NSErrorPointer) {
+    func setupServer(_ error: NSErrorPointer) {
         
         if self.netService != nil {
             // Calling [self run] more than once should be a NOP.
@@ -123,12 +124,12 @@ class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate 
         } else {
             
             if self.netService == nil {
-                self.netService = NSNetService(domain: "local", type: kBonjourServiceType, name: UIDevice.currentDevice().name, port: 0)
+                self.netService = NetService(domain: "local", type: kBonjourServiceType, name: UIDevice.current.name, port: 0)
                 self.netService?.delegate = self
             }
             
             if self.netService == nil {
-                if error != nil {error.memory = NSError(domain: CryptoServerErrorDomain, code: kCryptoServerCouldNotBindOrEstablishNetService, userInfo: nil)}
+                if let error = error  {error.pointee = NSError(domain: CryptoServerErrorDomain, code: kCryptoServerCouldNotBindOrEstablishNetService, userInfo: nil)}
                 self.teardown()
                 return
             }
@@ -141,10 +142,10 @@ class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate 
         
         assert(thisError == nil, thisError!.localizedDescription)
         
-        self.netService!.publishWithOptions(.ListenForConnections)
+        self.netService!.publish(options: .listenForConnections)
     }
     
-    func handleConnection(peerName: String?, inputStream readStream: NSInputStream, outputStream writeStream: NSOutputStream) {
+    func handleConnection(_ peerName: String?, inputStream readStream: InputStream, outputStream writeStream: OutputStream) {
         
         assert(peerName != nil, "No peer name given for client.")
         
@@ -160,11 +161,11 @@ class CryptoServer: NSObject, CryptoServerRequestDelegate, NSNetServiceDelegate 
         }
     }
     
-    func cryptoServerRequestDidFinish(request: CryptoServerRequest) {
+    func cryptoServerRequestDidFinish(_ request: CryptoServerRequest) {
         self.connectionBag.remove(request)
     }
     
-    func cryptoServerRequestDidReceiveError(request: CryptoServerRequest) {
+    func cryptoServerRequestDidReceiveError(_ request: CryptoServerRequest) {
         self.connectionBag.remove(request)
     }
     

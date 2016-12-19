@@ -88,10 +88,10 @@ class SecKeyWrapper: NSObject {
     private var publicKeyRef: SecKey? = nil
     private var privateKeyRef: SecKey? = nil
     
-    var publicTag: NSData
-    var privateTag: NSData
-    var symmetricTag: NSData
-    var symmetricKeyRef: NSData? = nil
+    var publicTag: Data
+    var privateTag: Data
+    var symmetricTag: Data
+    var symmetricKeyRef: Data? = nil
     
     // (See cssmtype.h and cssmapple.h on the Mac OS X SDK.)
     
@@ -99,19 +99,15 @@ class SecKeyWrapper: NSObject {
     private let CSSM_ALGID_VENDOR_DEFINED: UInt = 0x8000_0000
     private let CSSM_ALGID_AES: UInt = 0x8000_0001
     
-    private static var __sharedKeyWrapper: SecKeyWrapper = SecKeyWrapper()
-    
     /* Begin method definitions */
     
-    static func sharedWrapper() -> SecKeyWrapper {
-        return __sharedKeyWrapper
-    }
+    static var shared: SecKeyWrapper = SecKeyWrapper()
     
     private override init() {
         // Tag data to search for keys.
-        privateTag = NSData(bytes: kPrivateKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: kPrivateKeyTag.utf8.count + 1)
-        publicTag = NSData(bytes: kPublicKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: kPrivateKeyTag.utf8.count + 1)
-        symmetricTag = NSData(bytes: kSymmetricKeyTag.cStringUsingEncoding(NSUTF8StringEncoding)!, length: kSymmetricKeyTag.utf8.count + 1)
+        privateTag = Data(bytes: kPrivateKeyTag.cString(using: .utf8)!, count: kPrivateKeyTag.utf8.count + 1)
+        publicTag = Data(bytes: kPublicKeyTag.cString(using: .utf8)!, count: kPublicKeyTag.utf8.count + 1)
+        symmetricTag = Data(bytes: kSymmetricKeyTag.cString(using: .utf8)!, count: kSymmetricKeyTag.utf8.count + 1)
         super.init()
         
     }
@@ -120,13 +116,13 @@ class SecKeyWrapper: NSObject {
         var sanityCheck = noErr
         
         // Set the public key query dictionary.
-        let queryPublicKey: [NSObject: AnyObject] = [
+        let queryPublicKey: NSDictionary = [
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: publicTag,
             kSecAttrKeyType: kSecAttrKeyTypeRSA]
         
         // Set the private key query dictionary.
-        let queryPrivateKey: [NSObject: AnyObject] = [
+        let queryPrivateKey: NSDictionary = [
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: privateTag,
             kSecAttrKeyType: kSecAttrKeyTypeRSA]
@@ -147,7 +143,7 @@ class SecKeyWrapper: NSObject {
         var sanityCheck = noErr
         
         // Set the symmetric key query dictionary.
-        let querySymmetricKey: [NSObject: AnyObject] = [
+        let querySymmetricKey: NSDictionary = [
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: symmetricTag,
             kSecAttrKeyType: CSSM_ALGID_AES]
@@ -158,7 +154,7 @@ class SecKeyWrapper: NSObject {
         
     }
     
-    func generateKeyPair(keySize: Int) {
+    func generateKeyPair(_ keySize: Int) {
         var sanityCheck = noErr
         publicKeyRef = nil
         privateKeyRef = nil
@@ -170,18 +166,18 @@ class SecKeyWrapper: NSObject {
         // Container dictionaries.
         
         // Set top level dictionary for the keypair.
-        var keyPairAttr: [NSObject: AnyObject] = [
+        let keyPairAttr: NSMutableDictionary = [
             kSecAttrKeyType: kSecAttrKeyTypeRSA,
             kSecAttrKeySizeInBits: keySize]
         
         // Set the private key dictionary.
-        let privateKeyAttr: [NSObject: AnyObject] = [
+        let privateKeyAttr: NSDictionary = [
             kSecAttrIsPermanent: true,
             kSecAttrApplicationTag: privateTag]
         // See SecKey.h to set other flag values.
         
         // Set the public key dictionary.
-        let publicKeyAttr: [NSObject: AnyObject] = [
+        let publicKeyAttr: NSDictionary = [
             kSecAttrIsPermanent: true,
             kSecAttrApplicationTag: publicTag]
         // See SecKey.h to set other flag values.
@@ -204,7 +200,7 @@ class SecKeyWrapper: NSObject {
         self.deleteSymmetricKey()
         
         // Container dictionary
-        var symmetricKeyAttr: [NSObject: AnyObject] = [
+        let symmetricKeyAttr: NSMutableDictionary = [
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: symmetricTag,
             kSecAttrKeyType: CSSM_ALGID_AES,
@@ -220,12 +216,12 @@ class SecKeyWrapper: NSObject {
         
         // Allocate some buffer space. I don't trust calloc.
         //###I do trust Array initializer.
-        symmetricKey = Array(count: kChosenCipherKeySize, repeatedValue: 0)
+        symmetricKey = Array(repeating: 0, count: kChosenCipherKeySize)
         
         sanityCheck = SecRandomCopyBytes(kSecRandomDefault, kChosenCipherKeySize, &symmetricKey)
         assert(sanityCheck == noErr, "Problem generating the symmetric key, OSStatus == \(sanityCheck).")
         
-        self.symmetricKeyRef = NSData(bytes: symmetricKey, length: kChosenCipherKeySize)
+        self.symmetricKeyRef = Data(bytes: symmetricKey, count: kChosenCipherKeySize)
         
         // Add the wrapped key data to the container dictionary.
         symmetricKeyAttr[kSecValueData] = self.symmetricKeyRef
@@ -236,15 +232,15 @@ class SecKeyWrapper: NSObject {
         
     }
     
-    func addPeerPublicKey(peerName: String, keyBits publicKey: NSData) -> SecKey? {
+    func addPeerPublicKey(_ peerName: String, keyBits publicKey: Data) -> SecKey? {
         var sanityCheck = noErr
         var peerKeyRef: AnyObject? = nil
         var persistPeer: AnyObject? = nil
         
         let peerTag = peerName.withCString {peerBytes in
-            return NSData(bytes: peerBytes, length: peerName.utf8.count)
+            return Data(bytes: peerBytes, count: peerName.utf8.count)
         }
-        var peerPublicKeyAttr: [NSObject: AnyObject] = [
+        let peerPublicKeyAttr: NSMutableDictionary = [
             
             kSecClass: kSecClassKey,
             kSecAttrKeyType: kSecAttrKeyTypeRSA,
@@ -252,7 +248,7 @@ class SecKeyWrapper: NSObject {
             kSecValueData: publicKey,
             kSecReturnPersistentRef: true]
         
-        sanityCheck = SecItemAdd(peerPublicKeyAttr as CFDictionary, &persistPeer)
+        sanityCheck = SecItemAdd(peerPublicKeyAttr, &persistPeer)
         
         // The nice thing about persistent references is that you can write their value out to disk and
         // then use them later. I don't do that here but it certainly can make sense for other situations
@@ -266,7 +262,7 @@ class SecKeyWrapper: NSObject {
         if persistPeer != nil {
             peerKeyRef = self.getKeyRefWithPersistentKeyRef(persistPeer!)
         } else {
-            peerPublicKeyAttr.removeValueForKey(kSecValueData)
+            peerPublicKeyAttr.removeObject(forKey: kSecValueData)
             peerPublicKeyAttr[kSecReturnRef] = true
             // Let's retry a different way.
             sanityCheck = SecItemCopyMatching(peerPublicKeyAttr, &peerKeyRef)
@@ -277,11 +273,11 @@ class SecKeyWrapper: NSObject {
         return peerKeyRef as! SecKey?
     }
     
-    func removePeerPublicKey(peerName: String) {
+    func removePeerPublicKey(_ peerName: String) {
         var sanityCheck = noErr
         
-        let peerTag = peerName.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: true)!
-        let peerPublicKeyAttr: [NSObject: AnyObject] = [
+        let peerTag = peerName.data(using: .utf8, allowLossyConversion: true)!
+        let peerPublicKeyAttr: NSDictionary = [
             
             kSecClass: kSecClassKey,
             kSecAttrKeyType: kSecAttrKeyTypeRSA,
@@ -293,145 +289,157 @@ class SecKeyWrapper: NSObject {
         
     }
     
-    func wrapSymmetricKey(symmetricKey: NSData, keyRef publicKey: SecKey) -> NSData? {
+    func wrapSymmetricKey(_ symmetricKey: Data, keyRef publicKey: SecKey) -> Data? {
         var sanityCheck = noErr
         
-        var cipher: NSData? = nil
+        var cipher: Data? = nil
         
         // Calculate the buffer sizes.
         var cipherBufferSize = SecKeyGetBlockSize(publicKey)
-        let keyBufferSize = symmetricKey.length
+        let keyBufferSize = symmetricKey.count
         
-        if kTypeOfWrapPadding == SecPadding.None {
+        if kTypeOfWrapPadding == [] {
             assert(keyBufferSize <= cipherBufferSize, "Nonce integer is too large and falls outside multiplicative group.")
         } else {
             assert(keyBufferSize <= (cipherBufferSize - 11), "Nonce integer is too large and falls outside multiplicative group.")
         }
         
         // Allocate some buffer space. I don't trust calloc.
-        var cipherBuffer: [UInt8] = Array(count: cipherBufferSize, repeatedValue: 0x0)
+        var cipherBuffer: [UInt8] = Array(repeating: 0x0, count: cipherBufferSize)
         
         // Encrypt using the public key.
-        sanityCheck = SecKeyEncrypt(publicKey,
-            kTypeOfWrapPadding,
-            UnsafePointer(symmetricKey.bytes),
-            keyBufferSize,
-            &cipherBuffer,
-            &cipherBufferSize
-        )
+        sanityCheck = symmetricKey.withUnsafeBytes {bytes in
+            SecKeyEncrypt(publicKey,
+                          kTypeOfWrapPadding,
+                          bytes,
+                          keyBufferSize,
+                          &cipherBuffer,
+                          &cipherBufferSize
+            )
+        }
         
         assert(sanityCheck == noErr, "Error encrypting, OSStatus == \(sanityCheck).")
         
         // Build up cipher text blob.
-        cipher = NSData(bytes: cipherBuffer, length: cipherBufferSize)
+        cipher = Data(bytes: cipherBuffer, count: cipherBufferSize)
         
         return cipher
     }
     
-    func unwrapSymmetricKey(wrappedSymmetricKey: NSData) -> NSData? {
+    func unwrapSymmetricKey(_ wrappedSymmetricKey: Data) -> Data? {
         var sanityCheck = noErr
         
-        var key: NSData? = nil
+        var key: Data? = nil
         
         let privateKey = self.getPrivateKeyRef()
         assert(privateKey != nil, "No private key found in the keychain.")
         
         // Calculate the buffer sizes.
         let cipherBufferSize = SecKeyGetBlockSize(privateKey!)
-        var keyBufferSize = wrappedSymmetricKey.length
+        var keyBufferSize = wrappedSymmetricKey.count
         
         assert(keyBufferSize <= cipherBufferSize, "Encrypted nonce is too large and falls outside multiplicative group.")
         
         // Allocate some buffer space. I don't trust calloc.
         //###I do trust Array initializer.
-        var keyBuffer: [UInt8] = Array(count: keyBufferSize, repeatedValue: 0x0)
+        var keyBuffer: [UInt8] = Array(repeating: 0x0, count: keyBufferSize)
         
         // Decrypt using the private key.
-        sanityCheck = SecKeyDecrypt(privateKey!,
-            kTypeOfWrapPadding,
-            UnsafePointer(wrappedSymmetricKey.bytes),
-            cipherBufferSize,
-            &keyBuffer,
-            &keyBufferSize
-        )
+        sanityCheck = wrappedSymmetricKey.withUnsafeBytes {bytes in
+            SecKeyDecrypt(privateKey!,
+                          kTypeOfWrapPadding,
+                          bytes,
+                          cipherBufferSize,
+                          &keyBuffer,
+                          &keyBufferSize
+            )
+        }
         
         assert(sanityCheck == noErr, "Error decrypting, OSStatus == \(sanityCheck).")
         
         // Build up plain text blob.
-        key = NSData(bytes: keyBuffer, length: keyBufferSize)
+        key = Data(bytes: keyBuffer, count: keyBufferSize)
         
         return key
     }
     
-    func getHashBytes(plainText: NSData) -> NSData {
+    func getHashBytes(_ plainText: Data) -> Data {
         var ctx = CC_SHA1_CTX()
         
         // Malloc a buffer to hold hash.
-        var hashBytes: [UInt8] = Array(count: kChosenDigestLength, repeatedValue: 0x0)
+        var hashBytes: [UInt8] = Array(repeating: 0x0, count: kChosenDigestLength)
         
         // Initialize the context.
         CC_SHA1_Init(&ctx)
         // Perform the hash.
-        CC_SHA1_Update(&ctx, plainText.bytes, CC_LONG(plainText.length))
+        plainText.withUnsafeBytes {bytes in
+            _ = CC_SHA1_Update(&ctx, bytes, CC_LONG(plainText.count))
+        }
         // Finalize the output.
         CC_SHA1_Final(&hashBytes, &ctx)
         
         // Build up the SHA1 blob.
-        let hash = NSData(bytes: hashBytes, length: kChosenDigestLength)
+        let hash = Data(bytes: hashBytes, count: kChosenDigestLength)
         
         return hash
     }
     
-    func getSignatureBytes(plainText: NSData) -> NSData? {
+    func getSignatureBytes(_ plainText: Data) -> Data? {
         var sanityCheck = noErr
-        var signedHash: NSData? = nil
+        var signedHash: Data? = nil
         
         let privateKey = self.getPrivateKeyRef()
         var signedHashBytesSize = SecKeyGetBlockSize(privateKey!)
         
         // Malloc a buffer to hold signature.
-        var signedHashBytes: [UInt8] = Array(count: signedHashBytesSize, repeatedValue: 0x0)
+        var signedHashBytes: [UInt8] = Array(repeating: 0x0, count: signedHashBytesSize)
         
         // Sign the SHA1 hash.
-        sanityCheck = SecKeyRawSign(privateKey!,
-            kTypeOfSigPadding,
-            UnsafePointer(self.getHashBytes(plainText).bytes),
-            kChosenDigestLength,
-            &signedHashBytes,
-            &signedHashBytesSize
-        )
+        sanityCheck = getHashBytes(plainText).withUnsafeBytes {bytes in
+            SecKeyRawSign(privateKey!,
+                          kTypeOfSigPadding,
+                          bytes,
+                          kChosenDigestLength,
+                          &signedHashBytes,
+                          &signedHashBytesSize
+            )
+        }
         
         assert(sanityCheck == noErr, "Problem signing the SHA1 hash, OSStatus == \(sanityCheck).")
         
         // Build up signed SHA1 blob.
-        signedHash = NSData(bytes:signedHashBytes, length: signedHashBytesSize)
+        signedHash = Data(bytes:signedHashBytes, count: signedHashBytesSize)
         
         return signedHash
     }
     
-    func verifySignature(plainText: NSData, secKeyRef publicKey: SecKey, signature sig: NSData) -> Bool {
+    func verifySignature(_ plainText: Data, secKeyRef publicKey: SecKey, signature sig: Data) -> Bool {
         var sanityCheck = noErr
         
         // Get the size of the assymetric block.
         let signedHashBytesSize = SecKeyGetBlockSize(publicKey)
         
-        sanityCheck = SecKeyRawVerify(publicKey,
-            kTypeOfSigPadding,
-            UnsafePointer(self.getHashBytes(plainText).bytes),
-            kChosenDigestLength,
-            UnsafePointer(sig.bytes),
-            signedHashBytesSize
-        )
+        sanityCheck = getHashBytes(plainText).withUnsafeBytes {hashBytes in
+            sig.withUnsafeBytes {sigBytes in
+                SecKeyRawVerify(publicKey,
+                                kTypeOfSigPadding,
+                                hashBytes,
+                                kChosenDigestLength,
+                                sigBytes,
+                                signedHashBytesSize
+                )
+            }
+        }
         
         return (sanityCheck == noErr)
     }
     
-    func doCipher(plainText: NSData, key symmetricKey: NSData, context encryptOrDecrypt: CCOperation, padding pkcs7: UnsafeMutablePointer<CCOptions>) -> NSData? {
+    func doCipher(_ plainText: Data, key symmetricKey: Data, context encryptOrDecrypt: CCOperation, padding pkcs7: UnsafeMutablePointer<CCOptions>?) -> Data? {
         var ccStatus = CCCryptorStatus(kCCSuccess)
         // Symmetric crypto reference.
-        var thisEncipher: CCCryptorRef = nil
+        var thisEncipher: CCCryptorRef? = nil
         // Cipher Text container.
-        var cipherOrPlainText: NSData? = nil
+        var cipherOrPlainText: Data? = nil
         // Remaining bytes to be performed on.
         var remainingBytes = 0
         // Number of bytes moved to buffer.
@@ -440,38 +448,40 @@ class SecKeyWrapper: NSObject {
         var totalBytesWritten = 0
         
         // Initialization vector; dummy in this case 0's.
-        let iv: [UInt8] = Array(count: kChosenCipherBlockSize, repeatedValue: 0x0)
+        let iv: [UInt8] = Array(repeating: 0x0, count: kChosenCipherBlockSize)
         
         assert(pkcs7 != nil, "CCOptions * pkcs7 cannot be NULL.")
-        assert(symmetricKey.length == kChosenCipherKeySize, "Disjoint choices for key size.")
+        assert(symmetricKey.count == kChosenCipherKeySize, "Disjoint choices for key size.")
         
         // Length of plainText buffer.
-        let plainTextBufferSize = plainText.length
+        let plainTextBufferSize = plainText.count
         
         assert(plainTextBufferSize > 0, "Empty plaintext passed in.")
         
         // We don't want to toss padding on if we don't need to
         if encryptOrDecrypt == CCOperation(kCCEncrypt) {
-            if pkcs7.memory != CCOptions(kCCOptionECBMode) {
+            if pkcs7?.pointee != CCOptions(kCCOptionECBMode) {
                 if (plainTextBufferSize % kChosenCipherBlockSize) == 0 {
-                    pkcs7.memory = 0x0000
+                    pkcs7?.pointee = 0x0000
                 } else {
-                    pkcs7.memory = CCOptions(kCCOptionPKCS7Padding)
+                    pkcs7?.pointee = CCOptions(kCCOptionPKCS7Padding)
                 }
             }
         } else if encryptOrDecrypt != CCOperation(kCCDecrypt) {
-            fatalError("Invalid CCOperation parameter [\(pkcs7.memory)] for cipher context.")
+            fatalError("Invalid CCOperation parameter [\(pkcs7?.pointee)] for cipher context.")
         }
         
         // Create and Initialize the crypto reference.
-        ccStatus = CCCryptorCreate(encryptOrDecrypt,
-            CCAlgorithm(kCCAlgorithmAES128),
-            pkcs7.memory,
-            symmetricKey.bytes,
-            kChosenCipherKeySize,
-            iv,
-            &thisEncipher
-        )
+        ccStatus = symmetricKey.withUnsafeBytes{bytes in
+            CCCryptorCreate(encryptOrDecrypt,
+                            CCAlgorithm(kCCAlgorithmAES128),
+                            (pkcs7?.pointee)!,
+                            bytes,
+                            kChosenCipherKeySize,
+                            iv,
+                            &thisEncipher
+            )
+        }
         
         assert(ccStatus == CCCryptorStatus(kCCSuccess), "Problem creating the context, ccStatus == \(ccStatus).")
         
@@ -479,23 +489,28 @@ class SecKeyWrapper: NSObject {
         let bufferPtrSize = CCCryptorGetOutputLength(thisEncipher, plainTextBufferSize, true)
         
         // Allocate buffer.
-        var bufferPtr: [UInt8] = Array(count: bufferPtrSize, repeatedValue: 0x0)
+        var bufferPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferPtrSize)
+        defer {bufferPtr.deallocate(capacity: bufferPtrSize)}
+        bufferPtr.initialize(to: 0, count: bufferPtrSize)
+        defer {bufferPtr.deinitialize(count: bufferPtrSize)}
         
         // Initialize some necessary book keeping.
         
-        var ptr = withUnsafeMutablePointer(&bufferPtr[0]) {$0}
+        var ptr = bufferPtr
         
         // Set up initial size.
         remainingBytes = bufferPtrSize
         
         // Actually perform the encryption or decryption.
-        ccStatus = CCCryptorUpdate(thisEncipher,
-            plainText.bytes,
-            plainTextBufferSize,
-            ptr,
-            remainingBytes,
-            &movedBytes
-        )
+        ccStatus = plainText.withUnsafeBytes {bytes in
+            CCCryptorUpdate(thisEncipher,
+                                       bytes,
+                                       plainTextBufferSize,
+                                       ptr,
+                                       remainingBytes,
+                                       &movedBytes
+            )
+        }
         
         assert(ccStatus == CCCryptorStatus(kCCSuccess), "Problem with CCCryptorUpdate, ccStatus == \(ccStatus).")
         
@@ -520,7 +535,7 @@ class SecKeyWrapper: NSObject {
         
         assert(ccStatus == CCCryptorStatus(kCCSuccess), "Problem with encipherment ccStatus == \(ccStatus)")
         
-        cipherOrPlainText = NSData(bytes: bufferPtr, length: totalBytesWritten)
+        cipherOrPlainText = Data(bytes: bufferPtr, count: totalBytesWritten)
         
         return cipherOrPlainText
         
@@ -549,7 +564,7 @@ class SecKeyWrapper: NSObject {
         if publicKeyRef == nil {
             
             // Set the public key query dictionary.
-            let queryPublicKey: [NSObject: AnyObject] = [
+            let queryPublicKey: NSDictionary = [
                 kSecClass: kSecClassKey,
                 kSecAttrApplicationTag: publicTag,
                 kSecAttrKeyType: kSecAttrKeyTypeRSA,
@@ -569,11 +584,11 @@ class SecKeyWrapper: NSObject {
         return publicKeyReference as! SecKey?
     }
     
-    func getPublicKeyBits() -> NSData? {
+    func getPublicKeyBits() -> Data? {
         var publicKeyBits: AnyObject? = nil
         
         // Set the public key query dictionary.
-        let queryPublicKey: [NSObject: AnyObject] = [
+        let queryPublicKey: NSDictionary = [
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: publicTag,
             kSecAttrKeyType: kSecAttrKeyTypeRSA,
@@ -587,7 +602,7 @@ class SecKeyWrapper: NSObject {
         }
         
         
-        return publicKeyBits as! NSData?
+        return publicKeyBits as! Data?
     }
     
     func getPrivateKeyRef() -> SecKey? {
@@ -596,7 +611,7 @@ class SecKeyWrapper: NSObject {
         if privateKeyRef == nil {
             
             // Set the private key query dictionary.
-            let queryPrivateKey: [NSObject: AnyObject] = [
+            let queryPrivateKey: NSDictionary = [
                 kSecClass: kSecClassKey,
                 kSecAttrApplicationTag: privateTag,
                 kSecAttrKeyType: kSecAttrKeyTypeRSA,
@@ -616,13 +631,13 @@ class SecKeyWrapper: NSObject {
         return privateKeyReference as! SecKey?
     }
     
-    func getSymmetricKeyBytes() -> NSData? {
+    func getSymmetricKeyBytes() -> Data? {
         var symmetricKeyReturn: AnyObject? = nil
         
         if self.symmetricKeyRef == nil {
             
             // Set the private key query dictionary.
-            let querySymmetricKey: [NSObject: AnyObject] = [
+            let querySymmetricKey: NSDictionary = [
                 kSecClass: kSecClassKey,
                 kSecAttrApplicationTag: symmetricTag,
                 kSecAttrKeyType: CSSM_ALGID_AES,
@@ -632,22 +647,22 @@ class SecKeyWrapper: NSObject {
             let sanityCheck = SecItemCopyMatching(querySymmetricKey, &symmetricKeyReturn)
             
             if sanityCheck == noErr && symmetricKeyReturn != nil {
-                self.symmetricKeyRef = symmetricKeyReturn as! NSData?
+                self.symmetricKeyRef = symmetricKeyReturn as! Data?
             } else {
                 self.symmetricKeyRef = nil
             }
             
         } else {
-            symmetricKeyReturn = self.symmetricKeyRef
+            symmetricKeyReturn = self.symmetricKeyRef as AnyObject?
         }
         
-        return symmetricKeyReturn as! NSData?
+        return symmetricKeyReturn as! Data?
     }
     
-    func getPersistentKeyRefWithKeyRef(keyRef: SecKey) -> AnyObject? {
+    func getPersistentKeyRefWithKeyRef(_ keyRef: SecKey) -> AnyObject? {
         
         // Set the PersistentKeyRef key query dictionary.
-        let queryKey: [NSObject: AnyObject] = [
+        let queryKey: NSDictionary = [
             kSecValueRef: keyRef,
             kSecReturnPersistentRef: true]
         
@@ -658,12 +673,12 @@ class SecKeyWrapper: NSObject {
         return persistentRef
     }
     
-    func getKeyRefWithPersistentKeyRef(persistentRef: AnyObject) -> SecKey? {
+    func getKeyRefWithPersistentKeyRef(_ persistentRef: AnyObject) -> SecKey? {
         var keyRef: AnyObject? = nil
         
         
         // Set the SecKeyRef query dictionary.
-        let queryKey: [NSObject: AnyObject] = [
+        let queryKey: NSDictionary = [
             kSecValuePersistentRef: persistentRef,
             kSecReturnRef: true]
         

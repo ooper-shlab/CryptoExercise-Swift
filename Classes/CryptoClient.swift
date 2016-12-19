@@ -60,24 +60,24 @@ import UIKit
 @objc(CryptoClientDelegate)
 protocol CryptoClientDelegate {
     
-    func cryptoClientDidCompleteConnection(cryptoClient: CryptoClient)
-    func cryptoClientDidReceiveError(cryptoClient: CryptoClient)
-    func cryptoClientWillBeginReceivingData(cryptoClient: CryptoClient)
-    func cryptoClientDidFinishReceivingData(cryptoClient: CryptoClient)
-    func cryptoClientWillBeginVerifyingData(cryptoClient: CryptoClient)
-    func cryptoClientDidFinishVerifyingData(cryptoClient: CryptoClient, verified: Bool)
+    func cryptoClientDidCompleteConnection(_ cryptoClient: CryptoClient)
+    func cryptoClientDidReceiveError(_ cryptoClient: CryptoClient)
+    func cryptoClientWillBeginReceivingData(_ cryptoClient: CryptoClient)
+    func cryptoClientDidFinishReceivingData(_ cryptoClient: CryptoClient)
+    func cryptoClientWillBeginVerifyingData(_ cryptoClient: CryptoClient)
+    func cryptoClientDidFinishVerifyingData(_ cryptoClient: CryptoClient, verified: Bool)
     
 }
 
 @objc(CryptoClient)
-class CryptoClient: NSObject, NSStreamDelegate {
-    var service: NSNetService?
-    var istr: NSInputStream? = nil
-    var ostr: NSOutputStream? = nil
-    weak var delegate: protocol<CryptoClientDelegate, NSObjectProtocol>!
+class CryptoClient: NSObject, StreamDelegate {
+    var service: NetService?
+    var istr: InputStream? = nil
+    var ostr: OutputStream? = nil
+    weak var delegate: CryptoClientDelegate?
     var isConnected: Bool = false
     
-    init(service serviceInstance: NSNetService?, delegate anObject: protocol<CryptoClientDelegate, NSObjectProtocol>) {
+    init(service serviceInstance: NetService?, delegate anObject: CryptoClientDelegate) {
         self.service = serviceInstance
         self.delegate = anObject
         self.isConnected = false
@@ -86,41 +86,41 @@ class CryptoClient: NSObject, NSStreamDelegate {
         
     }
     
-    func stream(stream: NSStream, handleEvent eventCode: NSStreamEvent) {
+    func stream(_ stream: Stream, handle eventCode: Stream.Event) {
         switch eventCode {
-        case NSStreamEvent.OpenCompleted:
-            if self.ostr?.streamStatus == .Open && self.istr?.streamStatus == .Open && !self.isConnected {
-                dispatch_async(dispatch_get_main_queue()) {
+        case Stream.Event.openCompleted:
+            if self.ostr?.streamStatus == .open && self.istr?.streamStatus == .open && !self.isConnected {
+                DispatchQueue.main.async {
                     self.delegate?.cryptoClientDidCompleteConnection(self)
                 }
                 self.isConnected = true
             }
-        case NSStreamEvent.HasSpaceAvailable:
+        case Stream.Event.hasSpaceAvailable:
             if stream === self.ostr {
-                if (stream as! NSOutputStream).hasSpaceAvailable {
-                    let publicKey = SecKeyWrapper.sharedWrapper().getPublicKeyBits()!
+                if (stream as! OutputStream).hasSpaceAvailable {
+                    let publicKey = SecKeyWrapper.shared.getPublicKeyBits()!
                     let retLen = self.sendData(publicKey)
-                    assert(retLen == publicKey.length, "Attempt to send public key failed, only sent \(retLen) bytes.")
+                    assert(retLen == publicKey.count, "Attempt to send public key failed, only sent \(retLen) bytes.")
                     
                     self.ostr!.close()
                 }
             }
-        case NSStreamEvent.HasBytesAvailable:
+        case Stream.Event.hasBytesAvailable:
             if stream === self.istr {
-                dispatch_async(dispatch_get_main_queue()) {
+                DispatchQueue.main.async {
                     self.delegate?.cryptoClientWillBeginReceivingData(self)
                 }
                 let theBlob = self.receiveData()
                 self.istr?.close()
-                dispatch_async(dispatch_get_main_queue()) {
+                DispatchQueue.main.async {
                     self.delegate?.cryptoClientDidFinishReceivingData(self)
                 }
                 if let blob = theBlob {
-                    dispatch_async(dispatch_get_main_queue()) {
+                    DispatchQueue.main.async {
                         self.delegate?.cryptoClientWillBeginVerifyingData(self)
                     }
                     let verify = self.verifyBlob(blob)
-                    dispatch_async(dispatch_get_main_queue()) {
+                    DispatchQueue.main.async {
                         self.delegate?.cryptoClientDidFinishVerifyingData(self, verified: verify)
                     }
                 } else {
@@ -128,7 +128,7 @@ class CryptoClient: NSObject, NSStreamDelegate {
                     delegate?.cryptoClientDidReceiveError(self)
                 }
             }
-        case NSStreamEvent.ErrorOccurred:
+        case Stream.Event.errorOccurred:
             // No debugging facility because we don't want to exit even in DEBUG.
             // It's annoying.
             NSLog("stream: %@", stream)
@@ -140,32 +140,36 @@ class CryptoClient: NSObject, NSStreamDelegate {
     
     func runConnection() {
         
-        assert(self.istr != nil && self.ostr != nil, "Streams not set up properly.")
         
-        if self.istr != nil && self.ostr != nil {
-            self.istr!.delegate = self
-            self.istr!.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
-            self.istr!.open()
-            self.ostr!.delegate = self
-            self.ostr!.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
-            self.ostr!.open()
+        guard let istr = self.istr, let ostr = self.ostr else {
+            fatalError("Streams not set up properly.")
         }
+        istr.delegate = self
+        istr.schedule(in: .current, forMode: .commonModes)
+        istr.open()
+        ostr.delegate = self
+        ostr.schedule(in: .current, forMode: .commonModes)
+        ostr.open()
     }
     
-    func receiveData() -> NSData? {
+    func receiveData() -> Data? {
         var lengthByte: size_t = 0
-        var retBlob: NSMutableData? = nil
+        var retBlob: Data? = nil
         
-        var len = withUnsafeMutablePointer(&lengthByte) {lengthBuffer in
-            return self.istr?.read(UnsafeMutablePointer(lengthBuffer), maxLength: sizeof(size_t)) ?? 0
+        var len = withUnsafeMutablePointer(to: &lengthByte) {lengthBuffer in
+            lengthBuffer.withMemoryRebound(to: UInt8.self, capacity: MemoryLayout<size_t>.size) {
+                self.istr?.read($0, maxLength: MemoryLayout<size_t>.size) ?? 0
+            }
         }
         
-        assert(len == sizeof(size_t), "Read failure errno: [\(errno)]")
+        assert(len == MemoryLayout<size_t>.size, "Read failure errno: [\(errno)]")
         
-        if lengthByte <= kMaxMessageLength && len == sizeof(size_t) {
-            retBlob = NSMutableData(length: lengthByte)
+        if lengthByte <= kMaxMessageLength && len == MemoryLayout<size_t>.size {
+            retBlob = Data(count: lengthByte)
             
-            len = self.istr?.read(UnsafeMutablePointer(retBlob!.mutableBytes), maxLength: lengthByte) ?? 0
+            len = retBlob!.withUnsafeMutableBytes {mutableBytes in
+                self.istr?.read(mutableBytes, maxLength: lengthByte) ?? 0
+            }
             
             assert(len == lengthByte, "Read failure, after buffer errno: [\(errno)]")
             
@@ -177,58 +181,60 @@ class CryptoClient: NSObject, NSStreamDelegate {
         return retBlob
     }
     
-    func sendData(outData: NSData?) -> Int {
+    func sendData(_ outData: Data?) -> Int {
         var len: size_t = 0
         
         if let data = outData {
-            len = data.length
+            len = data.count
             if len > 0 {
-                let longSize = sizeof(size_t)
+                let longSize = MemoryLayout<size_t>.size
                 
-                let message = NSMutableData(capacity: (len + longSize))!
-                message.appendBytes(&len, length: longSize)
-                message.appendData(data)
+                var message = Data(capacity: (len + longSize))
+                message.append(Data(bytes: &len, count: longSize))
+                message.append(data)
                 
-                self.ostr?.write(UnsafePointer(message.bytes), maxLength: message.length)
+                message.withUnsafeBytes {bytes in
+                    _ = self.ostr?.write(bytes, maxLength: message.count)
+                }
             }
         }
         
         return len
     }
     
-    func verifyBlob(blob: NSData) -> Bool {
+    func verifyBlob(_ blob: Data) -> Bool {
         var verified = false
         var pad: CCOptions = 0
         
         let peerName = self.service!.name
 
         do {
-            let message = try NSPropertyListSerialization.propertyListWithData(blob, options: NSPropertyListReadOptions(rawValue: NSPropertyListMutabilityOptions.MutableContainers.rawValue), format: nil) as! NSDictionary
+            let message = try PropertyListSerialization.propertyList(from: blob, options: .mutableContainers, format: nil) as! NSDictionary
         
             
             // Get the unwrapped symmetric key.
-            let symmetricKey = SecKeyWrapper.sharedWrapper().unwrapSymmetricKey(message[kSymTag]! as! NSData)
+            let symmetricKey = SecKeyWrapper.shared.unwrapSymmetricKey(message[kSymTag]! as! Data)
             
             // Get the padding PKCS#7 flag.
-            pad = (message[kPadTag]! as! NSNumber).unsignedIntValue
+            pad = message[kPadTag]! as! UInt32
             
             // Get the encrypted message and decrypt.
-            let plainText = SecKeyWrapper.sharedWrapper().doCipher(message[kMesTag]! as! NSData,
+            let plainText = SecKeyWrapper.shared.doCipher(message[kMesTag]! as! Data,
                 key: symmetricKey!,
                 context: CCOperation(kCCDecrypt),
                 padding: &pad)
             
             // Add peer public key.
-            let publicKeyRef = SecKeyWrapper.sharedWrapper().addPeerPublicKey(peerName,
-                keyBits: message[kPubTag]! as! NSData)
+            let publicKeyRef = SecKeyWrapper.shared.addPeerPublicKey(peerName,
+                keyBits: message[kPubTag]! as! Data)
             
             // Verify the signature.
-            verified = SecKeyWrapper.sharedWrapper().verifySignature(plainText!,
+            verified = SecKeyWrapper.shared.verifySignature(plainText!,
                 secKeyRef: publicKeyRef!,
-                signature: message[kSigTag]! as! NSData)
+                signature: message[kSigTag]! as! Data)
             
             // Clean up by removing the peer public key.
-            SecKeyWrapper.sharedWrapper().removePeerPublicKey(peerName)
+            SecKeyWrapper.shared.removePeerPublicKey(peerName)
         } catch let error as NSError {
             fatalError(error.localizedDescription)
         }
@@ -237,9 +243,9 @@ class CryptoClient: NSObject, NSStreamDelegate {
     }
     
     deinit {
-        istr?.removeFromRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
+        istr?.remove(from: .current, forMode: .commonModes)
         
-        ostr?.removeFromRunLoop(NSRunLoop.currentRunLoop(), forMode: NSRunLoopCommonModes)
+        ostr?.remove(from: .current, forMode: .commonModes)
         
     }
     
