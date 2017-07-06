@@ -468,7 +468,7 @@ class SecKeyWrapper: NSObject {
                 }
             }
         } else if encryptOrDecrypt != CCOperation(kCCDecrypt) {
-            fatalError("Invalid CCOperation parameter [\(pkcs7?.pointee)] for cipher context.")
+            fatalError("Invalid CCOperation parameter [\(pkcs7?.pointee.description ?? "nil")] for cipher context.")
         }
         
         // Create and Initialize the crypto reference.
