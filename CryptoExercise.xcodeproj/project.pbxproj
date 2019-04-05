@@ -16,11 +16,11 @@
 		D70A1EE41AE270AE00CD8FE7 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70A1EE31AE270AE00CD8FE7 /* AppDelegate.swift */; };
 		D70A1EE81AE2797B00CD8FE7 /* ServiceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70A1EE71AE2797B00CD8FE7 /* ServiceController.swift */; };
 		D70A1F241AE3C96000CD8FE7 /* LocalBonjourController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70A1F231AE3C96000CD8FE7 /* LocalBonjourController.swift */; };
-		D724A93A1A2AF25F0003311E /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = D724A9391A2AF25F0003311E /* Default-568h@2x.png */; };
 		D72817F41E07779E00284B53 /* ServiceView.xib in Resources */ = {isa = PBXBuildFile; fileRef = D72817EC1E07779E00284B53 /* ServiceView.xib */; };
 		D72817F51E07779E00284B53 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = D72817EE1E07779E00284B53 /* MainWindow.xib */; };
 		D72817F61E07779E00284B53 /* KeyGeneration.xib in Resources */ = {isa = PBXBuildFile; fileRef = D72817F01E07779E00284B53 /* KeyGeneration.xib */; };
 		D72817F71E07779E00284B53 /* BrowserViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = D72817F21E07779E00284B53 /* BrowserViewController.xib */; };
+		D77F71CD2257284E000A606E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D77F71CC2257284E000A606E /* LaunchScreen.storyboard */; };
 		D7F4FE171AE3F3F600F5C24F /* CryptoClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7F4FE111AE3F3F600F5C24F /* CryptoClient.swift */; };
 		D7F4FE181AE3F3F600F5C24F /* CryptoCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7F4FE121AE3F3F600F5C24F /* CryptoCommon.swift */; };
 		D7F4FE191AE3F3F600F5C24F /* CryptoServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7F4FE131AE3F3F600F5C24F /* CryptoServer.swift */; };
@@ -41,12 +41,11 @@
 		D70A1EE31AE270AE00CD8FE7 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D70A1EE71AE2797B00CD8FE7 /* ServiceController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ServiceController.swift; sourceTree = "<group>"; };
 		D70A1F231AE3C96000CD8FE7 /* LocalBonjourController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocalBonjourController.swift; sourceTree = "<group>"; };
-		D724A9391A2AF25F0003311E /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
-		D72817ED1E07779E00284B53 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/ServiceView.xib; sourceTree = "<group>"; };
-		D72817EF1E07779E00284B53 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainWindow.xib; sourceTree = "<group>"; };
-		D72817F11E07779E00284B53 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/KeyGeneration.xib; sourceTree = "<group>"; };
-		D72817F31E07779E00284B53 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/BrowserViewController.xib; sourceTree = "<group>"; };
-		D7585A041AD1EEE60068B31A /* CryptoExercise-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CryptoExercise-Bridging-Header.h"; sourceTree = "<group>"; };
+		D77F71CC2257284E000A606E /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		D7D6D35A20E524C60012B707 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ServiceView.xib; sourceTree = "<group>"; };
+		D7D6D35C20E524C70012B707 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/KeyGeneration.xib; sourceTree = "<group>"; };
+		D7D6D35D20E524C70012B707 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/BrowserViewController.xib; sourceTree = "<group>"; };
+		D7D6D35E20E525410012B707 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainWindow.xib; sourceTree = "<group>"; };
 		D7F4FE0D1AE3F2E600F5C24F /* ReadMe.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ReadMe.txt; sourceTree = "<group>"; };
 		D7F4FE0F1AE3F35600F5C24F /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		D7F4FE111AE3F3F600F5C24F /* CryptoClient.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = CryptoClient.swift; path = Classes/CryptoClient.swift; sourceTree = "<group>"; };
@@ -98,7 +97,6 @@
 			children = (
 				D7F4FE0F1AE3F35600F5C24F /* README.md */,
 				D7F4FE0D1AE3F2E600F5C24F /* ReadMe.txt */,
-				D724A9391A2AF25F0003311E /* Default-568h@2x.png */,
 				4A7068AA0E3E8CC200C7744A /* Crypto Classes */,
 				080E96DDFE201D6D7F000001 /* Other Classes */,
 				29B97315FDCFA39411CA2CEA /* Other Sources */,
@@ -124,6 +122,7 @@
 				D72817F01E07779E00284B53 /* KeyGeneration.xib */,
 				D72817F21E07779E00284B53 /* BrowserViewController.xib */,
 				8D1107310486CEB800E47090 /* Info.plist */,
+				D77F71CC2257284E000A606E /* LaunchScreen.storyboard */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -150,7 +149,6 @@
 				D7F4FE141AE3F3F600F5C24F /* CryptoServerRequest.swift */,
 				D7F4FE151AE3F3F600F5C24F /* KeyGeneration.swift */,
 				D7F4FE161AE3F3F600F5C24F /* SecKeyWrapper.swift */,
-				D7585A041AD1EEE60068B31A /* CryptoExercise-Bridging-Header.h */,
 			);
 			name = "Crypto Classes";
 			sourceTree = "<group>";
@@ -182,23 +180,23 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0700;
-				LastUpgradeCheck = 0820;
+				LastUpgradeCheck = 1020;
 				TargetAttributes = {
 					1D6058900D05DD3D006BFB54 = {
-						LastSwiftMigration = 0820;
+						LastSwiftMigration = 1020;
 					};
 				};
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "CryptoExercise" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 1;
 			knownRegions = (
-				English,
-				Japanese,
-				French,
-				German,
 				en,
+				Base,
+				fr,
+				ja,
+				de,
 			);
 			mainGroup = 29B97314FDCFA39411CA2CEA /* CustomTemplate */;
 			projectDirPath = "";
@@ -215,9 +213,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				D72817F41E07779E00284B53 /* ServiceView.xib in Resources */,
-				D724A93A1A2AF25F0003311E /* Default-568h@2x.png in Resources */,
 				D72817F51E07779E00284B53 /* MainWindow.xib in Resources */,
 				D72817F61E07779E00284B53 /* KeyGeneration.xib in Resources */,
+				D77F71CD2257284E000A606E /* LaunchScreen.storyboard in Resources */,
 				D72817F71E07779E00284B53 /* BrowserViewController.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -247,7 +245,7 @@
 		D72817EC1E07779E00284B53 /* ServiceView.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				D72817ED1E07779E00284B53 /* en */,
+				D7D6D35A20E524C60012B707 /* Base */,
 			);
 			name = ServiceView.xib;
 			sourceTree = "<group>";
@@ -255,7 +253,7 @@
 		D72817EE1E07779E00284B53 /* MainWindow.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				D72817EF1E07779E00284B53 /* en */,
+				D7D6D35E20E525410012B707 /* en */,
 			);
 			name = MainWindow.xib;
 			sourceTree = "<group>";
@@ -263,7 +261,7 @@
 		D72817F01E07779E00284B53 /* KeyGeneration.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				D72817F11E07779E00284B53 /* en */,
+				D7D6D35C20E524C70012B707 /* Base */,
 			);
 			name = KeyGeneration.xib;
 			sourceTree = "<group>";
@@ -271,7 +269,7 @@
 		D72817F21E07779E00284B53 /* BrowserViewController.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				D72817F31E07779E00284B53 /* en */,
+				D7D6D35D20E524C70012B707 /* Base */,
 			);
 			name = BrowserViewController.xib;
 			sourceTree = "<group>";
@@ -297,9 +295,8 @@
 				OTHER_SWIFT_FLAGS = "-D ALLOW_TO_CONNECT_TO_SELF";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.yourcompany.${PRODUCT_NAME:identifier}";
 				PRODUCT_NAME = CryptoExercise;
-				SWIFT_OBJC_BRIDGING_HEADER = "CryptoExercise-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -319,8 +316,7 @@
 				OTHER_SWIFT_FLAGS = "-D ALLOW_TO_CONNECT_TO_SELF";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.yourcompany.${PRODUCT_NAME:identifier}";
 				PRODUCT_NAME = CryptoExercise;
-				SWIFT_OBJC_BRIDGING_HEADER = "CryptoExercise-Bridging-Header.h";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -328,12 +324,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -352,8 +356,9 @@
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "-DDEBUG=1";
 				OTHER_SWIFT_FLAGS = "-D ALLOW_TO_CONNECT_TO_SELF";
-				PREBINDING = NO;
 				SDKROOT = iphoneos;
+				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
+				SWIFT_VERSION = 4.2;
 			};
 			name = Debug;
 		};
@@ -361,12 +366,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -382,9 +395,10 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				OTHER_SWIFT_FLAGS = "-D ALLOW_TO_CONNECT_TO_SELF";
-				PREBINDING = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
+				SWIFT_VERSION = 4.2;
 			};
 			name = Release;
 		};

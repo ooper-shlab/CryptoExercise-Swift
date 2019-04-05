@@ -112,19 +112,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidFinishLaunching(_ application: UIApplication) {
         // Is WiFi network available? That's necessary to use Bonjour.
         if !self.isNetworkAvailableFlags(nil) {
-            if #available(iOS 8.0, *) {
-                let alertController = UIAlertController(title: "No WiFi network available.",
-                    message: "Exit this app and enable WiFi using the Settings application.",
-                    preferredStyle: .alert)
-                alertController.addAction(UIAlertAction(title: "OK", style: .cancel, handler: nil))
-                self.window?.rootViewController?.present(alertController, animated: true, completion: nil)
-            } else {
-                let alert = UIAlertView(title: "No WiFi network available.",
-                    message: "Exit this app and enable WiFi using the Settings application.",
-                    delegate: self,
-                    cancelButtonTitle: "OK")
-                alert.show()
-            }
+            let alertController = UIAlertController(title: "No WiFi network available.",
+                                                    message: "Exit this app and enable WiFi using the Settings application.",
+                                                    preferredStyle: .alert)
+            alertController.addAction(UIAlertAction(title: "OK", style: .cancel, handler: nil))
+            self.window?.rootViewController?.present(alertController, animated: true, completion: nil)
         } else {
             // Add the controller's view as a subview of the window
             self.window?.addSubview(navController.view)

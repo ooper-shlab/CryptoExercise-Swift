@@ -55,6 +55,7 @@
  */
 
 import UIKit
+import CommonCrypto
 
 @objc(CryptoServerRequestDelegate)
 protocol CryptoServerRequestDelegate {
@@ -88,10 +89,10 @@ class CryptoServerRequest: NSObject, StreamDelegate {
     func runProtocol() {
         
         self.istr.delegate = self
-        self.istr.schedule(in: .current, forMode: .commonModes)
+        self.istr.schedule(in: .current, forMode: .common)
         self.istr.open()
         self.ostr.delegate = self
-        self.ostr.schedule(in: .current, forMode: .commonModes)
+        self.ostr.schedule(in: .current, forMode: .common)
         self.ostr.open()
     }
     
@@ -165,7 +166,8 @@ class CryptoServerRequest: NSObject, StreamDelegate {
             retBlob = Data(count: lengthByte)
             
             len = retBlob!.withUnsafeMutableBytes{mutableBytes in
-                self.istr.read(mutableBytes, maxLength: lengthByte)
+                let mutablePointer = mutableBytes.bindMemory(to: UInt8.self).baseAddress!
+                return self.istr.read(mutablePointer, maxLength: lengthByte)
             }
             
             assert(len == lengthByte, "Read failure, after buffer errno: [\(errno)]")
@@ -191,7 +193,8 @@ class CryptoServerRequest: NSObject, StreamDelegate {
                 message.append(data)
                 
                 message.withUnsafeBytes{bytes in
-                    _ = self.ostr.write(bytes, maxLength: message.count)
+                    let pointer = bytes.bindMemory(to: UInt8.self).baseAddress!
+                    _ = self.ostr.write(pointer, maxLength: message.count)
                 }
             }
         }
@@ -252,9 +255,9 @@ class CryptoServerRequest: NSObject, StreamDelegate {
     }
     
     deinit {
-        istr.remove(from: .current, forMode: .commonModes)
+        istr.remove(from: .current, forMode: .common)
         
-        ostr.remove(from: .current, forMode: .commonModes)
+        ostr.remove(from: .current, forMode: .common)
         
         
     }

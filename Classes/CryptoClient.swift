@@ -56,6 +56,7 @@
  */
 
 import UIKit
+import CommonCrypto
 
 @objc(CryptoClientDelegate)
 protocol CryptoClientDelegate {
@@ -145,10 +146,10 @@ class CryptoClient: NSObject, StreamDelegate {
             fatalError("Streams not set up properly.")
         }
         istr.delegate = self
-        istr.schedule(in: .current, forMode: .commonModes)
+        istr.schedule(in: .current, forMode: .common)
         istr.open()
         ostr.delegate = self
-        ostr.schedule(in: .current, forMode: .commonModes)
+        ostr.schedule(in: .current, forMode: .common)
         ostr.open()
     }
     
@@ -168,7 +169,8 @@ class CryptoClient: NSObject, StreamDelegate {
             retBlob = Data(count: lengthByte)
             
             len = retBlob!.withUnsafeMutableBytes {mutableBytes in
-                self.istr?.read(mutableBytes, maxLength: lengthByte) ?? 0
+                let mutablePointer = mutableBytes.bindMemory(to: UInt8.self).baseAddress!
+                return self.istr?.read(mutablePointer, maxLength: lengthByte) ?? 0
             }
             
             assert(len == lengthByte, "Read failure, after buffer errno: [\(errno)]")
@@ -194,7 +196,8 @@ class CryptoClient: NSObject, StreamDelegate {
                 message.append(data)
                 
                 message.withUnsafeBytes {bytes in
-                    _ = self.ostr?.write(bytes, maxLength: message.count)
+                    let pointer = bytes.bindMemory(to: UInt8.self).baseAddress!
+                    _ = self.ostr?.write(pointer, maxLength: message.count)
                 }
             }
         }
@@ -243,9 +246,9 @@ class CryptoClient: NSObject, StreamDelegate {
     }
     
     deinit {
-        istr?.remove(from: .current, forMode: .commonModes)
+        istr?.remove(from: .current, forMode: .common)
         
-        ostr?.remove(from: .current, forMode: .commonModes)
+        ostr?.remove(from: .current, forMode: .common)
         
     }
     

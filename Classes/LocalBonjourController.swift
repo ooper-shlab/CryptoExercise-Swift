@@ -125,7 +125,7 @@ class LocalBonjourController: UIViewController, NetServiceBrowserDelegate, UITab
     }
     
     func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
-        if let index = self.services.index(of: service) {self.services.remove(at: index)}
+        if let index = self.services.firstIndex(of: service) {self.services.remove(at: index)}
         if !moreComing { tableView.reloadData() }
     }
 

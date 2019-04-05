@@ -57,6 +57,7 @@
 
 import UIKit
 import Security
+import CommonCrypto
 
 /* Begin global declarations */
 
@@ -309,9 +310,10 @@ class SecKeyWrapper: NSObject {
         
         // Encrypt using the public key.
         sanityCheck = symmetricKey.withUnsafeBytes {bytes in
-            SecKeyEncrypt(publicKey,
+            let pointer = bytes.bindMemory(to: UInt8.self).baseAddress!
+            return SecKeyEncrypt(publicKey,
                           kTypeOfWrapPadding,
-                          bytes,
+                          pointer,
                           keyBufferSize,
                           &cipherBuffer,
                           &cipherBufferSize
@@ -346,9 +348,10 @@ class SecKeyWrapper: NSObject {
         
         // Decrypt using the private key.
         sanityCheck = wrappedSymmetricKey.withUnsafeBytes {bytes in
-            SecKeyDecrypt(privateKey!,
+            let pointer = bytes.bindMemory(to: UInt8.self).baseAddress!
+            return SecKeyDecrypt(privateKey!,
                           kTypeOfWrapPadding,
-                          bytes,
+                          pointer,
                           cipherBufferSize,
                           &keyBuffer,
                           &keyBufferSize
@@ -373,7 +376,7 @@ class SecKeyWrapper: NSObject {
         CC_SHA1_Init(&ctx)
         // Perform the hash.
         plainText.withUnsafeBytes {bytes in
-            _ = CC_SHA1_Update(&ctx, bytes, CC_LONG(plainText.count))
+            _ = CC_SHA1_Update(&ctx, bytes.baseAddress, CC_LONG(plainText.count))
         }
         // Finalize the output.
         CC_SHA1_Final(&hashBytes, &ctx)
@@ -396,9 +399,10 @@ class SecKeyWrapper: NSObject {
         
         // Sign the SHA1 hash.
         sanityCheck = getHashBytes(plainText).withUnsafeBytes {bytes in
-            SecKeyRawSign(privateKey!,
+            let pointer = bytes.bindMemory(to: UInt8.self).baseAddress!
+            return SecKeyRawSign(privateKey!,
                           kTypeOfSigPadding,
-                          bytes,
+                          pointer,
                           kChosenDigestLength,
                           &signedHashBytes,
                           &signedHashBytesSize
@@ -420,12 +424,14 @@ class SecKeyWrapper: NSObject {
         let signedHashBytesSize = SecKeyGetBlockSize(publicKey)
         
         sanityCheck = getHashBytes(plainText).withUnsafeBytes {hashBytes in
-            sig.withUnsafeBytes {sigBytes in
-                SecKeyRawVerify(publicKey,
+            let hashPointer = hashBytes.bindMemory(to: UInt8.self).baseAddress!
+            return sig.withUnsafeBytes {(sigBytes: UnsafeRawBufferPointer) in
+                let sigPointer = sigBytes.bindMemory(to: UInt8.self).baseAddress!
+                return SecKeyRawVerify(publicKey,
                                 kTypeOfSigPadding,
-                                hashBytes,
+                                hashPointer,
                                 kChosenDigestLength,
-                                sigBytes,
+                                sigPointer,
                                 signedHashBytesSize
                 )
             }
@@ -476,7 +482,7 @@ class SecKeyWrapper: NSObject {
             CCCryptorCreate(encryptOrDecrypt,
                             CCAlgorithm(kCCAlgorithmAES128),
                             (pkcs7?.pointee)!,
-                            bytes,
+                            bytes.baseAddress,
                             kChosenCipherKeySize,
                             iv,
                             &thisEncipher
@@ -490,8 +496,8 @@ class SecKeyWrapper: NSObject {
         
         // Allocate buffer.
         var bufferPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferPtrSize)
-        defer {bufferPtr.deallocate(capacity: bufferPtrSize)}
-        bufferPtr.initialize(to: 0, count: bufferPtrSize)
+        defer {bufferPtr.deallocate()}
+        bufferPtr.initialize(repeating: 0, count: bufferPtrSize)
         defer {bufferPtr.deinitialize(count: bufferPtrSize)}
         
         // Initialize some necessary book keeping.
@@ -504,11 +510,11 @@ class SecKeyWrapper: NSObject {
         // Actually perform the encryption or decryption.
         ccStatus = plainText.withUnsafeBytes {bytes in
             CCCryptorUpdate(thisEncipher,
-                                       bytes,
-                                       plainTextBufferSize,
-                                       ptr,
-                                       remainingBytes,
-                                       &movedBytes
+                            bytes.baseAddress,
+                            plainTextBufferSize,
+                            ptr,
+                            remainingBytes,
+                            &movedBytes
             )
         }
         
